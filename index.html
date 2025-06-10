@@ -220,6 +220,16 @@
             background-color: #333;
             border-radius: 4px;
             margin-bottom: 5px;
+            border: 2px solid transparent;
+            transition: border-color 0.3s;
+        }
+
+        .task-item-small:hover {
+            border-color: #4A90E2;
+        }
+
+        .task-item-small.editing {
+            border-color: #E67E22;
         }
     </style>
 </head>
@@ -269,11 +279,35 @@
                 </select>
             </div>
 
-            <h3 class="section-title">Proyectos</h3>
+            <h3 class="section-title">Proyectos Existentes</h3>
             <div id="projects-list"></div>
+            
+            <hr style="border: none; border-top: 2px solid #333; margin: 25px 0;">
+            
+            <h3 class="section-title">Crear Nuevo Proyecto</h3>
+            <div class="form-group">
+                <label for="project-start-month">Mes de Inicio del Proyecto:</label>
+                <select id="project-start-month">
+                    <option value="0">Enero</option>
+                    <option value="1">Febrero</option>
+                    <option value="2">Marzo</option>
+                    <option value="3">Abril</option>
+                    <option value="4">Mayo</option>
+                    <option value="5" selected>Junio</option>
+                    <option value="6">Julio</option>
+                    <option value="7">Agosto</option>
+                    <option value="8">Septiembre</option>
+                    <option value="9">Octubre</option>
+                    <option value="10">Noviembre</option>
+                    <option value="11">Diciembre</option>
+                </select>
+            </div>
+            
             <div class="form-group" style="text-align: center; margin-top: 10px;">
                 <button onclick="addProject()" style="width: 100%;">➕ Agregar Proyecto</button>
             </div>
+            
+            <hr style="border: none; border-top: 2px solid #333; margin: 25px 0;">
 
             <div id="task-editor" style="display: none;">
                 <h3 class="section-title" id="tasks-title">Tareas</h3>
@@ -312,7 +346,13 @@
                 </div>
 
                 <div class="form-group" style="text-align: center; margin-top: 20px;">
-                    <button onclick="addTask()" style="width: 100%; padding: 12px; font-size: 16px;">➕ Agregar Tarea</button>
+                    <div id="add-task-container">
+                        <button onclick="addTask()" style="width: 100%; padding: 8px; font-size: 14px;">➕ Agregar Tarea</button>
+                    </div>
+                    <div id="edit-task-container" style="display: none;">
+                        <button type="button" onclick="cancelEdit()" style="padding: 8px; font-size: 14px; width: calc(50% - 5px); background-color: #666; margin-right: 5px;">✖️ Cancelar</button>
+                        <button onclick="updateTask()" style="padding: 8px; font-size: 14px; width: calc(50% - 5px);">💾 Actualizar</button>
+                    </div>
                 </div>
                 
                 <h4 class="section-title" style="font-size: 1em; margin-top: 20px;">Tareas del Proyecto</h4>
@@ -342,7 +382,7 @@
         const colorPalette = ['#4A90E2', '#8E44AD', '#E67E22', '#27AE60', '#F1C40F', '#C0392B', '#16A085', '#2980B9'];
         let nextColorIndex = 0;
 
-        const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+        const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
         let totalWeeks = 26; // Se calcula dinámicamente
 
         const rowHeight = 35;
@@ -368,19 +408,36 @@
             const projectColor = colorPalette[nextColorIndex % colorPalette.length];
             nextColorIndex++;
 
+            // Calcular la semana de inicio basándose en el mes seleccionado
+            const projectStartMonth = parseInt(document.getElementById('project-start-month').value);
+            const cronogramaStartMonth = parseInt(document.getElementById('start-month').value);
+            const startWeekOffset = calculateWeekOffset(cronogramaStartMonth, projectStartMonth);
+
             const newProject = {
                 name: `Proyecto ${projects.length + 1}`,
                 color: projectColor,
                 tasks: [
-                    { name: "Definición", startWeek: 1, duration: 2, isMilestone: false, textPosition: "inside" },
-                    { name: "Diseño", startWeek: 3, duration: 2, isMilestone: false, textPosition: "inside" },
-                    { name: "Desarrollo", startWeek: 5, duration: 6, isMilestone: false, textPosition: "inside" },
-                    { name: "Pruebas", startWeek: 11, duration: 2, isMilestone: false, textPosition: "inside" },
-                    { name: "Entrega", startWeek: 13, duration: 0.2, isMilestone: true, textPosition: "outside" }
+                    { name: "Definición", startWeek: startWeekOffset + 1, duration: 1, isMilestone: false, textPosition: "inside" },
+                    { name: "Diseño", startWeek: startWeekOffset + 2, duration: 1, isMilestone: false, textPosition: "inside" },
+                    { name: "Desarrollo", startWeek: startWeekOffset + 3, duration: 8, isMilestone: false, textPosition: "inside" },
+                    { name: "Pruebas", startWeek: startWeekOffset + 11, duration: 2, isMilestone: false, textPosition: "inside" },
+                    { name: "Entrega", startWeek: startWeekOffset + 13, duration: 0.2, isMilestone: true, textPosition: "outside" }
                 ]
             };
             projects.push(newProject);
             selectProject(projects.length - 1);
+        }
+
+        function calculateWeekOffset(cronogramaStartMonth, projectStartMonth) {
+            let monthDiff = projectStartMonth - cronogramaStartMonth;
+            
+            // Si el mes del proyecto es anterior al mes de inicio del cronograma, asumir que es del año siguiente
+            if (monthDiff < 0) {
+                monthDiff += 12;
+            }
+            
+            // Aproximar 4.33 semanas por mes
+            return Math.round(monthDiff * 4.33);
         }
 
         function selectProject(index) {
@@ -451,6 +508,12 @@
             };
             
             projects[selectedProjectIndex].tasks.push(task);
+
+            // Limpiar formulario
+            document.getElementById('task-name').value = '';
+            document.getElementById('start-week').value = 1;
+            document.getElementById('duration').value = 1;
+
             updateTasksList();
             updatePreview();
         }
@@ -458,8 +521,61 @@
         function deleteTask(taskIndex) {
             if (selectedProjectIndex === -1) return;
             projects[selectedProjectIndex].tasks.splice(taskIndex, 1);
+            cancelEdit(); // Si se borra la tarea que se está editando
             updateTasksList();
             updatePreview();
+        }
+
+        function editTask(taskIndex) {
+            if (selectedProjectIndex === -1) return;
+
+            editingTask = { project: selectedProjectIndex, task: taskIndex };
+
+            const task = projects[selectedProjectIndex].tasks[taskIndex];
+
+            document.getElementById('task-name').value = task.name;
+            document.getElementById('start-week').value = task.startWeek;
+            document.getElementById('duration').value = task.duration;
+            document.getElementById('task-type').value = task.isMilestone ? 'milestone' : 'normal';
+            document.getElementById('text-position').value = task.textPosition;
+
+            document.getElementById('add-task-container').style.display = 'none';
+            document.getElementById('edit-task-container').style.display = 'flex';
+
+            updateTasksList();
+        }
+
+        function cancelEdit() {
+            editingTask = { project: -1, task: -1 };
+
+            document.getElementById('task-name').value = '';
+            document.getElementById('start-week').value = 1;
+            document.getElementById('duration').value = 1;
+            document.getElementById('task-type').value = 'normal';
+            document.getElementById('text-position').value = 'inside';
+
+            document.getElementById('add-task-container').style.display = 'block';
+            document.getElementById('edit-task-container').style.display = 'none';
+
+            updateTasksList();
+        }
+
+        function updateTask() {
+            const { project, task: taskIndex } = editingTask;
+            if (project === -1 || taskIndex === -1) return;
+
+            const updatedTask = {
+                name: document.getElementById('task-name').value.trim() || 'Tarea sin nombre',
+                startWeek: parseInt(document.getElementById('start-week').value),
+                duration: parseFloat(document.getElementById('duration').value),
+                isMilestone: document.getElementById('task-type').value === 'milestone',
+                textPosition: document.getElementById('text-position').value
+            };
+
+            projects[project].tasks[taskIndex] = updatedTask;
+
+            updatePreview();
+            cancelEdit(); // Esto resetea el formulario y la lista de tareas
         }
 
         function updateTasksList() {
@@ -473,14 +589,34 @@
             }
 
             tasksTitle.textContent = `Tareas de: ${projects[selectedProjectIndex].name}`;
-            tasksList.innerHTML = '';
+            tasksList.innerHTML = ''; // Limpiar la lista
+
             projects[selectedProjectIndex].tasks.forEach((task, index) => {
                 const item = document.createElement('div');
                 item.className = 'task-item-small';
-                item.innerHTML = `
-                    <span>${task.name} (S${task.startWeek} - S${task.startWeek+task.duration})</span>
-                    <button class="delete" onclick="deleteTask(${index})">🗑</button>
-                `;
+                if (editingTask.project === selectedProjectIndex && editingTask.task === index) {
+                    item.classList.add('editing');
+                }
+                item.style.cursor = 'pointer';
+
+                // Hacer que toda la fila sea clickeable para editar
+                item.addEventListener('click', () => editTask(index));
+
+                const taskInfo = document.createElement('span');
+                taskInfo.textContent = `${task.name} (S${task.startWeek} - S${Math.round((task.startWeek + task.duration) * 10) / 10})`;
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete';
+                deleteButton.innerHTML = '🗑';
+                
+                // Evitar que el clic en el botón de borrar active la edición
+                deleteButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteTask(index);
+                });
+
+                item.appendChild(taskInfo);
+                item.appendChild(deleteButton);
                 tasksList.appendChild(item);
             });
         }
@@ -511,7 +647,8 @@
                 totalHeight += p.tasks.length * rowHeight;
             });
             
-            canvas.height = Math.max(400, totalHeight + 20) * dpr; // Add 20 for bottom padding
+            // Ajustar altura exactamente al contenido, sin mínimo fijo
+            canvas.height = (totalHeight + 20) * dpr; // Add 20 for bottom padding
             
             ctx.scale(dpr, dpr);
             canvas.addEventListener('click', handleCanvasClick);
@@ -543,7 +680,9 @@
                         ctx.fillStyle = textColor;
                         ctx.font = "bold 14px Poppins";
                         ctx.textAlign = 'center';
-                        ctx.fillText(months[lastMonth].toUpperCase(), monthStartX + (weeksInCurrentMonth * weekWidth) / 2, headerHeight / 2 - 10);
+                        const prevWeekDate = new Date(startDate.getTime() + ((i - 1) * 7 + 3) * 24 * 60 * 60 * 1000);
+                        const monthWithYear = months[lastMonth].toUpperCase() + "'" + prevWeekDate.getFullYear().toString().substr(-2);
+                        ctx.fillText(monthWithYear, monthStartX + (weeksInCurrentMonth * weekWidth) / 2, headerHeight / 2 - 10);
                     }
                     lastMonth = currentMonth;
                     monthStartX = projectLabelWidth + i * weekWidth;
@@ -571,7 +710,9 @@
                 ctx.fillStyle = textColor;
                 ctx.font = "bold 14px Poppins";
                 ctx.textAlign = 'center';
-                ctx.fillText(months[lastMonth].toUpperCase(), monthStartX + (weeksInCurrentMonth * weekWidth) / 2, headerHeight / 2 - 10);
+                const lastWeekDate = new Date(startDate.getTime() + ((totalWeeks - 1) * 7 + 3) * 24 * 60 * 60 * 1000);
+                const monthWithYear = months[lastMonth].toUpperCase() + "'" + lastWeekDate.getFullYear().toString().substr(-2);
+                ctx.fillText(monthWithYear, monthStartX + (weeksInCurrentMonth * weekWidth) / 2, headerHeight / 2 - 10);
             }
 
             ctx.strokeStyle = gridColor;
@@ -731,7 +872,7 @@
 
         function getStartDate() {
             const selectedMonth = parseInt(document.getElementById('start-month').value);
-            const date = new Date(2024, selectedMonth, 1);
+            const date = new Date(2025, selectedMonth, 1);
             // Encontrar el primer lunes del mes
             while (date.getDay() !== 1) {
                 date.setDate(date.getDate() + 1);
@@ -741,7 +882,7 @@
 
         function getEndDate() {
             const selectedMonth = parseInt(document.getElementById('end-month').value);
-            const date = new Date(2024, selectedMonth + 1, 0); // Último día del mes
+            const date = new Date(2025, selectedMonth + 1, 0); // Último día del mes
             return date;
         }
 
@@ -751,7 +892,7 @@
             
             // Si el mes de fin es anterior al de inicio, asumir que es del año siguiente
             if (endDate < startDate) {
-                const nextYearEndDate = new Date(2025, parseInt(document.getElementById('end-month').value) + 1, 0);
+                const nextYearEndDate = new Date(2026, parseInt(document.getElementById('end-month').value) + 1, 0);
                 const diffTime = nextYearEndDate.getTime() - startDate.getTime();
                 const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
                 return Math.max(4, diffWeeks);
