@@ -32,6 +32,8 @@ const textColor = '#E0E0E0';
 const gridFont = "12px Poppins";
 const projectFont = "bold 16px Poppins";
 const taskFont = "14px Poppins";
+const projectIconSize = 18;
+const projectIconPadding = 20;
 
 // --- INICIALIZACIÓN ---
 window.addEventListener('load', () => {
@@ -921,7 +923,11 @@ function drawProjects() {
         };
         projectHitboxes.push(projectHitbox);
         
-        const isHovering = lastMousePosition.x >= projectHitbox.x - 10 && lastMousePosition.x <= projectHitbox.x + projectHitbox.width + 50 &&
+        // El área de hover ahora incluye los iconos
+        const iconsWidth = (projectIconSize + projectIconPadding) * 2;
+        const hoverAreaWidth = projectHitbox.width + iconsWidth;
+
+        const isHovering = lastMousePosition.x >= projectHitbox.x && lastMousePosition.x <= projectHitbox.x + hoverAreaWidth &&
                            lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
 
         if (isHovering && !draggingTask && !resizingTask && !isDrawingForExport) {
@@ -1104,33 +1110,29 @@ function createFloatingInput(hitbox) {
 }
 
 function drawProjectIcons(ctx, hitbox) {
-    const iconSize = 18;
-    const padding = 10;
     const y = hitbox.y + (hitbox.height / 2);
 
-    const colorIconX = hitbox.x + hitbox.width + padding;
-    ctx.font = `${iconSize}px sans-serif`;
+    const colorIconX = hitbox.x + hitbox.width + projectIconPadding;
+    ctx.font = `${projectIconSize}px sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText('🎨', colorIconX, y);
 
-    const deleteIconX = colorIconX + iconSize + padding;
+    const deleteIconX = colorIconX + projectIconSize + projectIconPadding;
     ctx.fillText('🗑️', deleteIconX, y);
 }
 
 function getIconUnderCursor(x, y) {
     let foundIcon = null;
     projectHitboxes.forEach(hitbox => {
-        const iconSize = 18;
-        const padding = 10;
-        const iconY = hitbox.y + (hitbox.height / 2) - (iconSize / 2);
-        const colorIconX = hitbox.x + hitbox.width + padding;
-        const deleteIconX = colorIconX + iconSize + padding;
+        const iconY = hitbox.y + (hitbox.height / 2) - (projectIconSize / 2);
+        const colorIconX = hitbox.x + hitbox.width + projectIconPadding;
+        const deleteIconX = colorIconX + projectIconSize + projectIconPadding;
 
-        if (x >= colorIconX && x <= colorIconX + iconSize && y >= iconY && y <= iconY + iconSize) {
+        if (x >= colorIconX && x <= colorIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
             foundIcon = { type: 'color', projectIndex: hitbox.projectIndex };
         }
-        if (x >= deleteIconX && x <= deleteIconX + iconSize && y >= iconY && y <= iconY + iconSize) {
+        if (x >= deleteIconX && x <= deleteIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
             foundIcon = { type: 'delete', projectIndex: hitbox.projectIndex };
         }
     });
