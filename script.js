@@ -15,6 +15,7 @@ const animationDuration = 800;
 let taskHitboxes = [];
 let projectHitboxes = [];
 let addTaskHitboxes = []; // Hitboxes para los botones de 'Añadir Tarea'
+let isDrawingForExport = false; // Flag para el dibujado de exportación
 const resizeHandleWidth = 10; // Ancho del área de redimensión
 
 const colorPalette = ['#4A90E2', '#8E44AD', '#E67E22', '#27AE60', '#F1C40F', '#C0392B', '#16A085', '#2980B9'];
@@ -46,6 +47,7 @@ window.addEventListener('load', () => {
     // Listeners para guardar y cargar
     document.getElementById('save-btn').addEventListener('click', saveSchedule);
     document.getElementById('load-input').addEventListener('change', loadSchedule);
+    document.getElementById('copy-btn').addEventListener('click', copyChartToClipboard);
 
     // Listeners del Canvas
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
@@ -840,7 +842,9 @@ function drawProjects() {
     let y = headerHeight;
     taskHitboxes = [];
     projectHitboxes = [];
-    addTaskHitboxes = []; // Limpiar hitboxes en cada redibujado
+    if (!isDrawingForExport) {
+        addTaskHitboxes = []; // Limpiar hitboxes en cada redibujado
+    }
     
     projects.forEach((project, projectIndex) => {
         y += 15; 
@@ -872,7 +876,7 @@ function drawProjects() {
         const isHovering = lastMousePosition.x >= projectHitbox.x - 10 && lastMousePosition.x <= projectHitbox.x + projectHitbox.width + 50 &&
                            lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
 
-        if (isHovering && !draggingTask && !resizingTask) {
+        if (isHovering && !draggingTask && !resizingTask && !isDrawingForExport) {
             drawProjectIcons(ctx, projectHitbox);
         }
 
@@ -884,28 +888,30 @@ function drawProjects() {
         });
 
         // Dibujar botón de 'Añadir Tarea'
-        const buttonY = y + 10;
-        const buttonHeight = 25;
-        ctx.fillStyle = '#3a3a3a';
-        ctx.strokeStyle = '#555';
-        ctx.lineWidth = 1;
-        roundRect(ctx, projectLabelWidth, buttonY, 120, buttonHeight, 5, true, true);
+        if (!isDrawingForExport) {
+            const buttonY = y + 10;
+            const buttonHeight = 25;
+            ctx.fillStyle = '#3a3a3a';
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1;
+            roundRect(ctx, projectLabelWidth, buttonY, 120, buttonHeight, 5, true, true);
 
-        ctx.fillStyle = textColor;
-        ctx.font = '13px Poppins';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('+ Añadir tarea', projectLabelWidth + 10, buttonY + buttonHeight / 2);
+            ctx.fillStyle = textColor;
+            ctx.font = '13px Poppins';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('+ Añadir tarea', projectLabelWidth + 10, buttonY + buttonHeight / 2);
 
-        addTaskHitboxes.push({
-            x: projectLabelWidth,
-            y: buttonY,
-            width: 120,
-            height: buttonHeight,
-            projectIndex
-        });
-        
-        y += buttonHeight + 15; // Espacio extra después del botón
+            addTaskHitboxes.push({
+                x: projectLabelWidth,
+                y: buttonY,
+                width: 120,
+                height: buttonHeight,
+                projectIndex
+            });
+            
+            y += buttonHeight + 15; // Espacio extra después del botón
+        }
     });
 }
 
@@ -1173,4 +1179,83 @@ function addSimpleTask(projectIndex) {
     projects[projectIndex].tasksByRow.push([newTask]);
     
     updatePreview();
+}
+
+// --- FUNCIONALIDAD DE COPIAR IMAGEN ---
+
+async function copyChartToClipboard() {
+    const copyButton = document.getElementById('copy-btn');
+    const originalText = copyButton.textContent;
+    
+    // --- 1. Crear canvas temporal ---
+    const originalCanvas = document.getElementById('ganttCanvas');
+    const tempCanvas = document.createElement('canvas');
+    const dpr = window.devicePixelRatio || 1;
+
+    // --- 2. Calcular dimensiones exactas del contenido ---
+    const contentWidth = originalCanvas.width / dpr;
+    let contentHeight = headerHeight;
+    projects.forEach(p => {
+        contentHeight += 15; // Espacio superior
+        contentHeight += p.tasksByRow.length * rowHeight;
+        contentHeight += 15; // Espacio inferior
+    });
+    contentHeight += 20; // Padding final
+
+    tempCanvas.width = contentWidth * dpr;
+    tempCanvas.height = contentHeight * dpr;
+    
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.scale(dpr, dpr);
+
+    // --- 3. Dibujar en el canvas temporal ---
+    const originalGlobalCtx = ctx;
+    const originalGlobalCanvas = canvas;
+    
+    // Suplantar temporalmente el canvas y contexto globales
+    ctx = tempCtx;
+    canvas = tempCanvas;
+    isDrawingForExport = true;
+
+    // Dibujar el fondo
+    ctx.fillStyle = '#252526';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Dibujar el título del cronograma
+    const cronogramaTitle = document.getElementById('cronograma-title').value || 'Cronograma';
+    ctx.fillStyle = textColor;
+    ctx.font = 'bold 24px Poppins';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(cronogramaTitle, 20, 20);
+    
+    // Reutilizar las funciones de dibujado principales
+    drawGrid();
+    drawProjects();
+
+    // Restaurar los globales
+    ctx = originalGlobalCtx;
+    canvas = originalGlobalCanvas;
+    isDrawingForExport = false;
+
+    // --- 4. Copiar al portapapeles ---
+    try {
+        tempCanvas.toBlob(async (blob) => {
+            if (!blob) {
+                throw new Error('No se pudo generar la imagen.');
+            }
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+
+            // Feedback al usuario
+            copyButton.textContent = '✅ Copiado';
+            setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+
+        }, 'image/png');
+    } catch (err) {
+        console.error('Error al copiar la imagen: ', err);
+        copyButton.textContent = '❌ Error';
+        setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+    }
 }
