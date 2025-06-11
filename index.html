@@ -3,905 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Creador de Cronogramas</title>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            background-color: #121212;
-            color: #E0E0E0;
-            font-family: 'Poppins', sans-serif;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .container {
-            display: flex;
-            height: 100vh;
-        }
-
-        .panel {
-            width: 350px;
-            background-color: #1E1E1E;
-            padding: 20px;
-            overflow-y: auto;
-            border-right: 2px solid #333;
-        }
-
-        .preview {
-            flex: 1;
-            background-color: #121212;
-            padding: 20px;
-            overflow: auto;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: #FFFFFF;
-        }
-
-        input[type="text"], input[type="number"], select {
-            width: 100%;
-            padding: 10px;
-            background-color: #2A2A2A;
-            border: 1px solid #444;
-            border-radius: 5px;
-            color: #E0E0E0;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        input[type="color"] {
-            width: 60px;
-            height: 40px;
-            padding: 0;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button {
-            background-color: #4A90E2;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 500;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-
-        button:hover {
-            background-color: #357ABD;
-        }
-
-        button.delete {
-            background: none;
-            border: none;
-            color: #666;
-            font-size: 30px;
-            cursor: pointer;
-            padding: 5px;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.3s ease;
-        }
-
-        button.delete:hover {
-            color: #999;
-        }
-
-        .task-item {
-            background-color: #2A2A2A;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            border: 2px solid transparent;
-            cursor: pointer;
-            transition: border-color 0.3s;
-        }
-
-        .task-item:hover {
-            border-color: #4A90E2;
-        }
-
-        .task-item.editing {
-            border-color: #E67E22;
-        }
-
-        .task-preview {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .task-color {
-            width: 20px;
-            height: 20px;
-            border-radius: 3px;
-        }
-
-        .task-info {
-            flex: 1;
-        }
-
-        .task-name {
-            font-weight: 600;
-            color: #FFFFFF;
-        }
-
-        .task-details {
-            font-size: 12px;
-            color: #AAA;
-        }
-
-        .edit-form {
-            display: none;
-            margin-top: 15px;
-        }
-
-        .edit-form.active {
-            display: block;
-        }
-
-        .form-row {
-            display: flex;
-            gap: 10px;
-            align-items: end;
-        }
-
-        .form-row > div {
-            flex: 1;
-        }
-
-        .form-row > div.small {
-            flex: 0.7;
-        }
-
-        #cronograma-container {
-            background-color: #1E1E1E;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-
-        h1 {
-            color: #FFFFFF;
-            text-align: center;
-            font-weight: 600;
-            border-bottom: 2px solid #333;
-            padding-bottom: 1rem;
-            margin-bottom: 2rem;
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            background-color: #242424;
-            border-radius: 8px;
-        }
-
-        .section-title {
-            color: #4A90E2;
-            font-weight: 600;
-            margin-bottom: 15px;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-        }
-
-        .project-name-input {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 1em;
-            font-weight: 600;
-            flex-grow: 1;
-        }
-        .task-item-small {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background-color: #333;
-            border-radius: 4px;
-            margin-bottom: 5px;
-            border: 2px solid transparent;
-            transition: border-color 0.3s;
-        }
-
-        .task-item-small:hover {
-            border-color: #4A90E2;
-        }
-
-        .task-item-small.editing {
-            border-color: #E67E22;
-        }
-    </style>
+    <title>Cronograma Interactivo</title>
+    <link rel="stylesheet" href="style.css" id="main-stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container">
-        <div class="panel">
-            <h2 class="section-title">Configuración del Cronograma</h2>
-            
-            <div class="form-group">
-                <label for="cronograma-title">Título del Cronograma:</label>
-                <input type="text" id="cronograma-title" placeholder="Ingresa el título" value="Cronograma de Proyectos">
+    <div class="main-container">
+        <div class="top-bar">
+            <div class="title-container">
+                <label for="cronograma-title">Título:</label>
+                <input type="text" id="cronograma-title" value="Mi Cronograma">
+                <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma">💾</button>
             </div>
-
-            <div class="form-group">
-                <label for="start-month">Mes de Inicio:</label>
+            <div class="controls">
+                <label for="start-month">Inicio:</label>
                 <select id="start-month">
-                    <option value="0">Enero</option>
-                    <option value="1">Febrero</option>
-                    <option value="2">Marzo</option>
-                    <option value="3">Abril</option>
-                    <option value="4">Mayo</option>
-                    <option value="5" selected>Junio</option>
-                    <option value="6">Julio</option>
-                    <option value="7">Agosto</option>
-                    <option value="8">Septiembre</option>
-                    <option value="9">Octubre</option>
-                    <option value="10">Noviembre</option>
-                    <option value="11">Diciembre</option>
+                    <!-- Opciones se generarán dinámicamente -->
                 </select>
-            </div>
-
-            <div class="form-group">
-                <label for="end-month">Mes de Fin:</label>
+                <label for="end-month">Fin:</label>
                 <select id="end-month">
-                    <option value="0">Enero</option>
-                    <option value="1">Febrero</option>
-                    <option value="2">Marzo</option>
-                    <option value="3">Abril</option>
-                    <option value="4">Mayo</option>
-                    <option value="5">Junio</option>
-                    <option value="6">Julio</option>
-                    <option value="7">Agosto</option>
-                    <option value="8">Septiembre</option>
-                    <option value="9">Octubre</option>
-                    <option value="10">Noviembre</option>
-                    <option value="11" selected>Diciembre</option>
+                    <!-- Opciones se generarán dinámicamente -->
                 </select>
-            </div>
-
-            <h3 class="section-title">Proyectos Existentes</h3>
-            <div id="projects-list"></div>
-            
-            <hr style="border: none; border-top: 2px solid #333; margin: 25px 0;">
-            
-            <h3 class="section-title">Crear Nuevo Proyecto</h3>
-            <div class="form-group">
-                <label for="project-start-month">Mes de Inicio del Proyecto:</label>
-                <select id="project-start-month">
-                    <option value="0">Enero</option>
-                    <option value="1">Febrero</option>
-                    <option value="2">Marzo</option>
-                    <option value="3">Abril</option>
-                    <option value="4">Mayo</option>
-                    <option value="5" selected>Junio</option>
-                    <option value="6">Julio</option>
-                    <option value="7">Agosto</option>
-                    <option value="8">Septiembre</option>
-                    <option value="9">Octubre</option>
-                    <option value="10">Noviembre</option>
-                    <option value="11">Diciembre</option>
-                </select>
-            </div>
-            
-            <div class="form-group" style="text-align: center; margin-top: 10px;">
-                <button onclick="addProject()" style="width: 100%;">➕ Agregar Proyecto</button>
-            </div>
-            
-            <hr style="border: none; border-top: 2px solid #333; margin: 25px 0;">
-
-            <div id="task-editor" style="display: none;">
-                <h3 class="section-title" id="tasks-title">Tareas</h3>
-                
-                <div class="form-group">
-                    <label for="task-name">Nombre de la Tarea:</label>
-                    <input type="text" id="task-name" placeholder="Ej: Definición">
-                </div>
-
-                <div class="form-row">
-                    <div class="small">
-                        <label for="start-week">Semana Inicio:</label>
-                        <input type="number" id="start-week" min="1" max="52" value="1">
-                    </div>
-                    <div class="small">
-                        <label for="duration">Duración:</label>
-                        <input type="number" id="duration" min="0.1" step="0.1" value="1">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div>
-                        <label for="task-type">Tipo:</label>
-                        <select id="task-type">
-                            <option value="normal">Barra Normal</option>
-                            <option value="milestone">Hito/Milestone</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="text-position">Posición Texto:</label>
-                        <select id="text-position">
-                            <option value="inside">Dentro</option>
-                            <option value="outside">Fuera</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-group" style="text-align: center; margin-top: 20px;">
-                    <div id="add-task-container">
-                        <button onclick="addTask()" style="width: 100%; padding: 8px; font-size: 14px;">➕ Agregar Tarea</button>
-                    </div>
-                    <div id="edit-task-container" style="display: none;">
-                        <button type="button" onclick="cancelEdit()" style="padding: 8px; font-size: 14px; width: calc(50% - 5px); background-color: #666; margin-right: 5px;">✖️ Cancelar</button>
-                        <button onclick="updateTask()" style="padding: 8px; font-size: 14px; width: calc(50% - 5px);">💾 Actualizar</button>
-                    </div>
-                </div>
-                
-                <h4 class="section-title" style="font-size: 1em; margin-top: 20px;">Tareas del Proyecto</h4>
-                <div id="tasks-list"></div>
             </div>
         </div>
+        
+        <div id="canvas-container">
+            <div id="project-title-render">Cronograma</div>
+            <canvas id="ganttCanvas"></canvas>
+        </div>
+        
+        <div class="bottom-controls">
+            <button id="add-project-btn" class="nice-button">Añadir Proyecto</button>
+            <label for="load-input" id="load-btn" class="nice-button">Importar</label>
+            <input type="file" id="load-input" style="display: none;" accept=".json">
+        </div>
+    </div>
 
-        <div class="preview">
-            <div id="cronograma-container">
-                <h1 id="project-title-render">Cronograma de Proyectos</h1>
-                <canvas id="ganttCanvas"></canvas>
+    <!-- Modal para Añadir/Editar Proyecto -->
+    <div id="project-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content large">
+            <h3 id="project-modal-title">Añadir Nuevo Proyecto</h3>
+            <div class="modal-main-content">
+                <div class="project-details-form">
+                    <label for="project-modal-name">Nombre del Proyecto:</label>
+                    <input type="text" id="project-modal-name" placeholder="Ej: Lanzamiento App">
+                    
+                    <div class="modal-row">
+                        <div>
+                            <label for="project-modal-start-month">Mes de Inicio:</label>
+                            <select id="project-modal-start-month"></select>
+                        </div>
+                        <div>
+                            <label for="project-modal-color">Color del Proyecto:</label>
+                            <input type="color" id="project-modal-color" value="#4A90E2">
+                        </div>
+                    </div>
+                </div>
+                <div class="project-tasks-section">
+                    <div class="tasks-header">
+                        <h4>Tareas Iniciales</h4>
+                        <button id="project-modal-add-task-btn" class="add-task-plus-btn">+</button>
+                    </div>
+                    <div id="project-modal-tasks-container">
+                        <!-- Las tareas se añadirán aquí dinámicamente -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="project-modal-close-btn" class="button-text-danger">Cancelar</button>
+                <button id="project-modal-save-btn" class="button">Aceptar</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal para editar tareas (inicialmente oculto) -->
+    <div id="task-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>Editar Tarea</h3>
+            <label for="modal-task-name">Nombre:</label>
+            <input type="text" id="modal-task-name">
+            
+            <label for="modal-start-week">Semana Inicio:</label>
+            <input type="number" id="modal-start-week" min="1">
+            
+            <label for="modal-duration">Duración (semanas):</label>
+            <input type="number" id="modal-duration" min="0.5" step="0.5">
+
+            <div class="modal-row">
+                <div>
+                    <label for="modal-task-type">Tipo:</label>
+                    <select id="modal-task-type">
+                        <option value="normal">Normal</option>
+                        <option value="milestone">Hito</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-text-position">Posición Texto:</label>
+                    <select id="modal-text-position">
+                        <option value="inside">Dentro</option>
+                        <option value="outside">Fuera</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="modal-delete-btn" class="button-danger">Eliminar Tarea</button>
+                <button id="modal-close-btn" class="button">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
     <script>
-        let projects = [];
-        let selectedProjectIndex = -1;
-        let editingTask = { project: -1, task: -1 };
-
-        let canvas, ctx;
-        let animationProgress = 0;
-        let lastTime = 0;
-        const animationDuration = 800;
-        let taskHitboxes = [];
-        
-        const colorPalette = ['#4A90E2', '#8E44AD', '#E67E22', '#27AE60', '#F1C40F', '#C0392B', '#16A085', '#2980B9'];
-        let nextColorIndex = 0;
-
-        const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
-        let totalWeeks = 26; // Se calcula dinámicamente
-
-        const rowHeight = 35;
-        const headerHeight = 70;
-        const projectLabelWidth = 200;
-        const gridColor = '#444';
-        const textColor = '#E0E0E0';
-        const gridFont = "12px Poppins";
-        const projectFont = "bold 16px Poppins";
-        const taskFont = "14px Poppins";
-
-        // --- INICIALIZACIÓN ---
-        window.addEventListener('load', () => {
-            addProject(); // Empezar con un proyecto por defecto
-            updatePreview();
-            // Agregar event listeners para cambios en los meses
-            document.getElementById('start-month').addEventListener('change', updatePreview);
-            document.getElementById('end-month').addEventListener('change', updatePreview);
-        });
-        
-        // --- MANEJO DE PROYECTOS ---
-        function addProject() {
-            const projectColor = colorPalette[nextColorIndex % colorPalette.length];
-            nextColorIndex++;
-
-            // Calcular la semana de inicio basándose en el mes seleccionado
-            const projectStartMonth = parseInt(document.getElementById('project-start-month').value);
-            const cronogramaStartMonth = parseInt(document.getElementById('start-month').value);
-            const startWeekOffset = calculateWeekOffset(cronogramaStartMonth, projectStartMonth);
-
-            const newProject = {
-                name: `Proyecto ${projects.length + 1}`,
-                color: projectColor,
-                tasks: [
-                    { name: "Definición", startWeek: startWeekOffset + 1, duration: 1, isMilestone: false, textPosition: "inside" },
-                    { name: "Diseño", startWeek: startWeekOffset + 2, duration: 1, isMilestone: false, textPosition: "inside" },
-                    { name: "Desarrollo", startWeek: startWeekOffset + 3, duration: 8, isMilestone: false, textPosition: "inside" },
-                    { name: "Pruebas", startWeek: startWeekOffset + 11, duration: 2, isMilestone: false, textPosition: "inside" },
-                    { name: "Entrega", startWeek: startWeekOffset + 13, duration: 0.2, isMilestone: true, textPosition: "outside" }
-                ]
-            };
-            projects.push(newProject);
-            selectProject(projects.length - 1);
-        }
-
-        function calculateWeekOffset(cronogramaStartMonth, projectStartMonth) {
-            let monthDiff = projectStartMonth - cronogramaStartMonth;
-            
-            // Si el mes del proyecto es anterior al mes de inicio del cronograma, asumir que es del año siguiente
-            if (monthDiff < 0) {
-                monthDiff += 12;
-            }
-            
-            // Aproximar 4.33 semanas por mes
-            return Math.round(monthDiff * 4.33);
-        }
-
-        function selectProject(index) {
-            selectedProjectIndex = index;
-            document.getElementById('task-editor').style.display = 'block';
-            updateProjectsList();
-            updateTasksList();
-            updatePreview();
-        }
-        
-        function updateProjectName(index, newName) {
-            projects[index].name = newName;
-            updatePreview();
-        }
-        
-        function updateProjectColor(index, newColor) {
-            projects[index].color = newColor;
-            updatePreview();
-        }
-
-        function deleteProject(index) {
-            if (!confirm(`¿Estás seguro de que quieres eliminar "${projects[index].name}"?`)) return;
-            
-            projects.splice(index, 1);
-            if (selectedProjectIndex >= index) {
-                selectedProjectIndex--;
-            }
-
-            if (projects.length === 0) {
-                document.getElementById('task-editor').style.display = 'none';
-            } else if (selectedProjectIndex < 0) {
-                selectProject(0);
-            }
-            
-            updateProjectsList();
-            updateTasksList();
-            updatePreview();
-        }
-
-        function updateProjectsList() {
-            const projectsList = document.getElementById('projects-list');
-            projectsList.innerHTML = '';
-            projects.forEach((project, index) => {
-                const item = document.createElement('div');
-                item.className = 'task-item' + (index === selectedProjectIndex ? ' editing' : '');
-                item.innerHTML = `
-                    <div class="task-preview">
-                        <input type="color" value="${project.color}" onchange="updateProjectColor(${index}, this.value)" onclick="event.stopPropagation()">
-                        <input type="text" value="${project.name}" class="project-name-input" oninput="updateProjectName(${index}, this.value)" onclick="event.stopPropagation()">
-                        <button class="delete" onclick="event.stopPropagation(); deleteProject(${index})">🗑</button>
-                    </div>
-                `;
-                item.addEventListener('click', () => selectProject(index));
-                projectsList.appendChild(item);
-            });
-        }
-        
-        // --- MANEJO DE TAREAS ---
-        function addTask() {
-            if (selectedProjectIndex === -1) return;
-            
-            const task = {
-                name: document.getElementById('task-name').value.trim() || 'Nueva Tarea',
-                startWeek: parseInt(document.getElementById('start-week').value),
-                duration: parseFloat(document.getElementById('duration').value),
-                isMilestone: document.getElementById('task-type').value === 'milestone',
-                textPosition: document.getElementById('text-position').value
-            };
-            
-            projects[selectedProjectIndex].tasks.push(task);
-
-            // Limpiar formulario
-            document.getElementById('task-name').value = '';
-            document.getElementById('start-week').value = 1;
-            document.getElementById('duration').value = 1;
-
-            updateTasksList();
-            updatePreview();
-        }
-
-        function deleteTask(taskIndex) {
-            if (selectedProjectIndex === -1) return;
-            projects[selectedProjectIndex].tasks.splice(taskIndex, 1);
-            cancelEdit(); // Si se borra la tarea que se está editando
-            updateTasksList();
-            updatePreview();
-        }
-
-        function editTask(taskIndex) {
-            if (selectedProjectIndex === -1) return;
-
-            editingTask = { project: selectedProjectIndex, task: taskIndex };
-
-            const task = projects[selectedProjectIndex].tasks[taskIndex];
-
-            document.getElementById('task-name').value = task.name;
-            document.getElementById('start-week').value = task.startWeek;
-            document.getElementById('duration').value = task.duration;
-            document.getElementById('task-type').value = task.isMilestone ? 'milestone' : 'normal';
-            document.getElementById('text-position').value = task.textPosition;
-
-            document.getElementById('add-task-container').style.display = 'none';
-            document.getElementById('edit-task-container').style.display = 'flex';
-
-            updateTasksList();
-        }
-
-        function cancelEdit() {
-            editingTask = { project: -1, task: -1 };
-
-            document.getElementById('task-name').value = '';
-            document.getElementById('start-week').value = 1;
-            document.getElementById('duration').value = 1;
-            document.getElementById('task-type').value = 'normal';
-            document.getElementById('text-position').value = 'inside';
-
-            document.getElementById('add-task-container').style.display = 'block';
-            document.getElementById('edit-task-container').style.display = 'none';
-
-            updateTasksList();
-        }
-
-        function updateTask() {
-            const { project, task: taskIndex } = editingTask;
-            if (project === -1 || taskIndex === -1) return;
-
-            const updatedTask = {
-                name: document.getElementById('task-name').value.trim() || 'Tarea sin nombre',
-                startWeek: parseInt(document.getElementById('start-week').value),
-                duration: parseFloat(document.getElementById('duration').value),
-                isMilestone: document.getElementById('task-type').value === 'milestone',
-                textPosition: document.getElementById('text-position').value
-            };
-
-            projects[project].tasks[taskIndex] = updatedTask;
-
-            updatePreview();
-            cancelEdit(); // Esto resetea el formulario y la lista de tareas
-        }
-
-        function updateTasksList() {
-            const tasksList = document.getElementById('tasks-list');
-            const tasksTitle = document.getElementById('tasks-title');
-
-            if (selectedProjectIndex === -1 || !projects[selectedProjectIndex]) {
-                tasksList.innerHTML = '';
-                tasksTitle.textContent = 'Tareas';
-                return;
-            }
-
-            tasksTitle.textContent = `Tareas de: ${projects[selectedProjectIndex].name}`;
-            tasksList.innerHTML = ''; // Limpiar la lista
-
-            projects[selectedProjectIndex].tasks.forEach((task, index) => {
-                const item = document.createElement('div');
-                item.className = 'task-item-small';
-                if (editingTask.project === selectedProjectIndex && editingTask.task === index) {
-                    item.classList.add('editing');
-                }
-                item.style.cursor = 'pointer';
-
-                // Hacer que toda la fila sea clickeable para editar
-                item.addEventListener('click', () => editTask(index));
-
-                const taskInfo = document.createElement('span');
-                taskInfo.textContent = `${task.name} (S${task.startWeek} - S${Math.round((task.startWeek + task.duration) * 10) / 10})`;
-                
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'delete';
-                deleteButton.innerHTML = '🗑';
-                
-                // Evitar que el clic en el botón de borrar active la edición
-                deleteButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteTask(index);
-                });
-
-                item.appendChild(taskInfo);
-                item.appendChild(deleteButton);
-                tasksList.appendChild(item);
-            });
-        }
-        
-        // --- LÓGICA DE DIBUJO ---
-        function updatePreview() {
-            const cronogramaTitle = document.getElementById('cronograma-title').value || 'Cronograma';
-            document.getElementById('project-title-render').textContent = cronogramaTitle;
-            
-            totalWeeks = calculateTotalWeeks();
-            initCanvas();
-            animationProgress = 0;
-            lastTime = 0;
-            requestAnimationFrame(animate);
-        }
-
-        function initCanvas() {
-            canvas = document.getElementById('ganttCanvas');
-            ctx = canvas.getContext('2d');
-            
-            const dpr = window.devicePixelRatio || 1;
-            const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width * dpr;
-
-            let totalHeight = headerHeight;
-            projects.forEach(p => {
-                totalHeight += 15; // Margin before each project
-                totalHeight += p.tasks.length * rowHeight;
-            });
-            
-            // Ajustar altura exactamente al contenido, sin mínimo fijo
-            canvas.height = (totalHeight + 20) * dpr; // Add 20 for bottom padding
-            
-            ctx.scale(dpr, dpr);
-            canvas.addEventListener('click', handleCanvasClick);
-        }
-        
-        function handleCanvasClick(e) { /* Lógica para editar tareas desde el canvas (futuro) */ }
-
-        function drawGrid() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#1E1E1E';
-            ctx.fillRect(0, 0, canvas.width, headerHeight);
-            
-            const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
-            const weekWidth = chartWidth / totalWeeks;
-            const startDate = getStartDate();
-            
-            let lastMonth = -1;
-            let monthStartX = projectLabelWidth;
-            let weeksInCurrentMonth = 0;
-
-            for (let i = 0; i < totalWeeks; i++) {
-                const weekDate = new Date(startDate.getTime() + (i * 7 + 3) * 24 * 60 * 60 * 1000);
-                const currentMonth = weekDate.getMonth();
-
-                if (currentMonth !== lastMonth) {
-                    if (lastMonth !== -1) {
-                        ctx.fillStyle = 'rgba(255,255,255,0.05)';
-                        ctx.fillRect(monthStartX, 0, weeksInCurrentMonth * weekWidth, headerHeight);
-                        ctx.fillStyle = textColor;
-                        ctx.font = "bold 14px Poppins";
-                        ctx.textAlign = 'center';
-                        const prevWeekDate = new Date(startDate.getTime() + ((i - 1) * 7 + 3) * 24 * 60 * 60 * 1000);
-                        const monthWithYear = months[lastMonth].toUpperCase() + "'" + prevWeekDate.getFullYear().toString().substr(-2);
-                        ctx.fillText(monthWithYear, monthStartX + (weeksInCurrentMonth * weekWidth) / 2, headerHeight / 2 - 10);
-                    }
-                    lastMonth = currentMonth;
-                    monthStartX = projectLabelWidth + i * weekWidth;
-                    weeksInCurrentMonth = 0;
-                }
-                weeksInCurrentMonth++;
-
-                const x = projectLabelWidth + i * weekWidth;
-                ctx.strokeStyle = gridColor;
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(x, headerHeight);
-                ctx.lineTo(x, canvas.height / (window.devicePixelRatio || 1));
-                ctx.stroke();
-
-                ctx.fillStyle = '#999';
-                ctx.font = gridFont;
-                ctx.textAlign = 'center';
-                ctx.fillText(`S${i + 1}`, x + weekWidth / 2, headerHeight / 2 + 15);
-            }
-            
-            if (lastMonth !== -1) {
-                ctx.fillStyle = 'rgba(255,255,255,0.05)';
-                ctx.fillRect(monthStartX, 0, weeksInCurrentMonth * weekWidth, headerHeight);
-                ctx.fillStyle = textColor;
-                ctx.font = "bold 14px Poppins";
-                ctx.textAlign = 'center';
-                const lastWeekDate = new Date(startDate.getTime() + ((totalWeeks - 1) * 7 + 3) * 24 * 60 * 60 * 1000);
-                const monthWithYear = months[lastMonth].toUpperCase() + "'" + lastWeekDate.getFullYear().toString().substr(-2);
-                ctx.fillText(monthWithYear, monthStartX + (weeksInCurrentMonth * weekWidth) / 2, headerHeight / 2 - 10);
-            }
-
-            ctx.strokeStyle = gridColor;
-            ctx.beginPath();
-            ctx.moveTo(0, headerHeight);
-            ctx.lineTo(canvas.width, headerHeight);
-            ctx.stroke();
-        }
-
-        function drawProjects() {
-            let y = headerHeight;
-            taskHitboxes = [];
-
-            projects.forEach(project => {
-                y += 15; // Margin before each project
-
-                // Dibujar el nombre del proyecto alineado con la primera tarea
-                if (project.tasks.length > 0) {
-                    const firstTaskCenterY = y + rowHeight / 2;
-                    ctx.fillStyle = project.color;
-                    ctx.font = projectFont;
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(project.name, 20, firstTaskCenterY);
-                }
-
-                // Dibujar tareas del proyecto
-                project.tasks.forEach((task, taskIndex) => {
-                    drawTaskBar(task, project, y + rowHeight / 2, taskIndex);
-                    y += rowHeight;
-                });
-            });
-        }
-
-        function drawTaskBar(task, project, y, taskIndex) {
-            const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
-            const weekWidth = chartWidth / totalWeeks;
-            const barHeight = 30;
-            const barY = y - barHeight / 2;
-            const startX = projectLabelWidth + (task.startWeek - 1) * weekWidth;
-            const fullBarWidth = task.duration * weekWidth;
-            let barWidth = fullBarWidth * animationProgress;
-
-            const hitbox = { 
-                x: startX, 
-                y: barY, 
-                width: fullBarWidth, 
-                height: barHeight, 
-                task, 
-                taskIndex 
-            };
-            taskHitboxes.push(hitbox);
-
-            ctx.fillStyle = project.color;
-            
-            if (task.isMilestone) {
-                const diamondSize = 15;
-                ctx.save();
-                ctx.translate(startX + diamondSize / 2, y);
-                ctx.rotate(Math.PI / 4);
-                ctx.fillRect(-diamondSize / 2, -diamondSize / 2, diamondSize, diamondSize);
-                ctx.restore();
-            } else {
-                roundRect(ctx, startX, barY, barWidth, barHeight, 8, true, false);
-            }
-
-            // Dibujar nombre de la tarea
-            ctx.font = taskFont;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            const text = task.name;
-            const textMetrics = ctx.measureText(text);
-            const textY = y;
-
-            if (task.isMilestone) {
-                ctx.fillStyle = textColor;
-                ctx.fillText(text, startX + 25, textY);
-                return;
-            }
-
-            const textFitsInside = fullBarWidth > textMetrics.width + 30;
-
-            if (task.textPosition === 'inside' && textFitsInside) {
-                if (barWidth > textMetrics.width + 30) {
-                    ctx.fillStyle = '#FFFFFF';
-                    ctx.save();
-                    ctx.beginPath();
-                    ctx.rect(startX, barY, barWidth, barHeight);
-                    ctx.clip();
-                    ctx.fillText(text, startX + 15, textY);
-                    ctx.restore();
-                }
-            } else {
-                if (animationProgress > 0.95) {
-                    ctx.fillStyle = textColor;
-                    const textX = startX + fullBarWidth + 10;
-
-                    if (textX + textMetrics.width > canvas.width / (window.devicePixelRatio || 1)) {
-                        ctx.textAlign = 'right';
-                        ctx.fillText(text, startX - 10, textY);
-                    } else {
-                        ctx.textAlign = 'left';
-                        ctx.fillText(text, textX, textY);
-                    }
-                }
-            }
-        }
-
-        function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
-            if (fill) ctx.fill();
-            if (stroke) ctx.stroke();
-        }
-
-        function lightenColor(hex, percent) {
-            hex = hex.replace(/^\s*#|\s*$/g, '');
-            if(hex.length == 3){
-                hex = hex.replace(/(.)/g, '$1$1');
-            }
-            var r = parseInt(hex.substr(0, 2), 16),
-                g = parseInt(hex.substr(2, 2), 16),
-                b = parseInt(hex.substr(4, 2), 16);
-
-            return '#' +
-               ((0|(1<<8) + r + (256 - r) * percent / 100).toString(16)).substr(1) +
-               ((0|(1<<8) + g + (256 - g) * percent / 100).toString(16)).substr(1) +
-               ((0|(1<<8) + b + (256 - b) * percent / 100).toString(16)).substr(1);
-        }
-
-        function animate(currentTime) {
-            if (lastTime === 0) lastTime = currentTime;
-            const elapsedTime = currentTime - lastTime;
-            lastTime = currentTime;
-            if (animationProgress < 1) {
-                animationProgress = Math.min(1, animationProgress + elapsedTime / animationDuration);
-                draw();
-                requestAnimationFrame(animate);
-            } else {
-                draw();
-            }
-        }
-
-        function draw() {
-            drawGrid();
-            drawProjects();
-        }
-
-        function getStartDate() {
-            const selectedMonth = parseInt(document.getElementById('start-month').value);
-            const date = new Date(2025, selectedMonth, 1);
-            // Encontrar el primer lunes del mes
-            while (date.getDay() !== 1) {
-                date.setDate(date.getDate() + 1);
-            }
-            return date;
-        }
-
-        function getEndDate() {
-            const selectedMonth = parseInt(document.getElementById('end-month').value);
-            const date = new Date(2025, selectedMonth + 1, 0); // Último día del mes
-            return date;
-        }
-
-        function calculateTotalWeeks() {
-            const startDate = getStartDate();
-            const endDate = getEndDate();
-            
-            // Si el mes de fin es anterior al de inicio, asumir que es del año siguiente
-            if (endDate < startDate) {
-                const nextYearEndDate = new Date(2026, parseInt(document.getElementById('end-month').value) + 1, 0);
-                const diffTime = nextYearEndDate.getTime() - startDate.getTime();
-                const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
-                return Math.max(4, diffWeeks);
-            }
-            
-            const diffTime = endDate.getTime() - startDate.getTime();
-            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
-            return Math.max(4, diffWeeks); // Mínimo 4 semanas
-        }
+        // Cache-busting para la hoja de estilos
+        document.getElementById('main-stylesheet').href = `style.css?v=${new Date().getTime()}`;
     </script>
 </body>
 </html> 
