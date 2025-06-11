@@ -40,7 +40,9 @@
     <!-- Modal para Añadir/Editar Proyecto -->
     <div id="project-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content large">
-            <h3 id="project-modal-title">Añadir Nuevo Proyecto</h3>
+            <div class="modal-header">
+                <h3 id="project-modal-title">Añadir Nuevo Proyecto</h3>
+            </div>
             <div class="modal-main-content">
                 <div class="project-details-form">
                     <label for="project-modal-name">Nombre del Proyecto:</label>
@@ -77,15 +79,23 @@
     <!-- Modal para editar tareas (inicialmente oculto) -->
     <div id="task-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <h3>Editar Tarea</h3>
-            <label for="modal-task-name">Nombre:</label>
+            <div class="modal-header">
+                <h3>Editar Tarea</h3>
+                <button class="modal-close-icon">&times;</button>
+            </div>
+            <label for="modal-task-name">Tarea:</label>
             <input type="text" id="modal-task-name">
             
-            <label for="modal-start-week">Semana Inicio:</label>
-            <input type="number" id="modal-start-week" min="1">
-            
-            <label for="modal-duration">Duración (semanas):</label>
-            <input type="number" id="modal-duration" min="0.5" step="0.5">
+            <div class="modal-row">
+                <div>
+                    <label for="modal-start-week">Semana Inicio:</label>
+                    <input type="number" id="modal-start-week" min="1">
+                </div>
+                <div>
+                    <label for="modal-duration">Duración (semanas):</label>
+                    <input type="number" id="modal-duration" min="0.5" step="0.5">
+                </div>
+            </div>
 
             <div class="modal-row">
                 <div>
@@ -105,8 +115,7 @@
             </div>
 
             <div class="modal-actions">
-                <button id="modal-delete-btn" class="button-danger">Eliminar Tarea</button>
-                <button id="modal-close-btn" class="button">Cerrar</button>
+                <button id="modal-delete-btn" class="button-text-danger">Eliminar Tarea</button>
             </div>
         </div>
     </div>

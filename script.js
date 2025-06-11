@@ -72,7 +72,73 @@ window.addEventListener('load', () => {
     // Eliminamos el proyecto que se crea por defecto
     // addProject(); 
     updatePreview();
+
+    makeModalDraggable(document.getElementById('project-modal'));
+    makeModalDraggable(document.getElementById('task-modal'));
+
+    // Listener para cerrar modales con la tecla ESC
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const projectModal = document.getElementById('project-modal');
+            if (projectModal.style.display !== 'none') {
+                closeProjectModal();
+            }
+
+            const taskModal = document.getElementById('task-modal');
+            if (taskModal.style.display !== 'none') {
+                closeTaskModal();
+            }
+        }
+    });
 });
+
+function makeModalDraggable(modal) {
+    const modalContent = modal.querySelector('.modal-content');
+    const header = modal.querySelector('.modal-header');
+    let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+    
+    // Función para obtener la transformación actual de traslación
+    function getCurrentTranslate() {
+        const transform = window.getComputedStyle(modalContent).transform;
+        if (transform === 'none') return { x: 0, y: 0 };
+        
+        const matrix = transform.match(/matrix.*\((.+)\)/);
+        if (matrix && matrix[1]) {
+            const matrixValues = matrix[1].split(', ');
+            return { x: parseInt(matrixValues[4], 10), y: parseInt(matrixValues[5], 10) };
+        }
+        return { x: 0, y: 0 };
+    }
+
+    if (header) {
+        header.onmousedown = dragMouseDown;
+    }
+
+    function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+    }
+
+    function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        
+        const currentPos = getCurrentTranslate();
+        
+        modalContent.style.transform = `translate(${currentPos.x - pos1}px, ${currentPos.y - pos2}px)`;
+    }
+
+    function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+    }
+}
 
 function populateMonthSelectors() {
     const startMonthSelect = document.getElementById('start-month');
@@ -389,10 +455,16 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
     document.getElementById('modal-task-type').value = task.isMilestone ? 'milestone' : 'normal';
     document.getElementById('modal-text-position').value = task.textPosition;
 
-    document.getElementById('task-modal').style.display = 'flex';
+    const modal = document.getElementById('task-modal');
+    modal.style.display = 'flex';
 
-    document.getElementById('modal-close-btn').onclick = closeTaskModal;
-    document.getElementById('modal-delete-btn').onclick = () => deleteTask(projectIndex, rowIndex, taskIndex);
+    modal.querySelector('.modal-close-icon').onclick = closeTaskModal;
+
+    document.getElementById('modal-delete-btn').onclick = () => {
+        if (confirm(`¿Estás seguro de que quieres eliminar la tarea "${task.name}"?`)) {
+            deleteTask(projectIndex, rowIndex, taskIndex);
+        }
+    };
     
     const modalInputs = ['modal-task-name', 'modal-start-week', 'modal-duration', 'modal-task-type', 'modal-text-position'];
     modalInputs.forEach(id => {
@@ -501,8 +573,11 @@ function handleCanvasMouseUp(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    const wasDragging = draggingTask?.didMove;
+    const wasResizing = !!resizingTask;
+
     // --- Lógica de Edición por Clic ---
-    if (!draggingTask?.didMove && !resizingTask) {
+    if (!wasDragging && !wasResizing) {
         // Buscar si se hizo clic en el botón '+' para añadir tarea
         for (const hitbox of addTaskHitboxes) {
             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
@@ -551,7 +626,9 @@ function handleCanvasMouseUp(e) {
 
     if (draggingTask) draggingTask = null;
     
-    updatePreview();
+    if (wasDragging || wasResizing) {
+        updatePreview();
+    }
 }
 
 function handleCanvasMouseMove(e) {
