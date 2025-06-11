@@ -54,6 +54,7 @@ window.addEventListener('load', () => {
     document.getElementById('save-btn').addEventListener('click', saveSchedule);
     document.getElementById('load-input').addEventListener('change', loadSchedule);
     document.getElementById('copy-btn').addEventListener('click', copyChartToClipboard);
+    document.getElementById('paste-table-btn').addEventListener('click', togglePasteArea);
 
     // Listeners del Canvas
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
@@ -320,6 +321,108 @@ function loadSchedule(event) {
         }
     };
     reader.readAsText(file);
+}
+
+// --- IMPORTAR DESDE TABLA ---
+
+function togglePasteArea() {
+    const pasteContainer = document.getElementById('paste-area-container');
+    const isVisible = pasteContainer.style.display !== 'none';
+
+    if (isVisible) {
+        pasteContainer.style.display = 'none';
+        document.removeEventListener('click', handleClickOutsidePasteArea, true);
+    } else {
+        pasteContainer.style.display = 'block';
+        document.getElementById('paste-textarea').focus();
+        // Añadir listener para el pegado
+        document.getElementById('paste-textarea').addEventListener('paste', handlePaste);
+        // Añadir listener para cerrar al hacer clic fuera
+        setTimeout(() => document.addEventListener('click', handleClickOutsidePasteArea, true), 0);
+    }
+}
+
+function handleClickOutsidePasteArea(event) {
+    const pasteContainer = document.getElementById('paste-area-container');
+    const pasteButton = document.getElementById('paste-table-btn');
+    if (!pasteContainer.contains(event.target) && event.target !== pasteButton) {
+        togglePasteArea(); // Cierra el área de pegado
+    }
+}
+
+function handlePaste(event) {
+    // Evitar la acción de pegado por defecto
+    event.preventDefault();
+
+    // Obtener texto del portapapeles
+    const pastedText = (event.clipboardData || window.clipboardData).getData('text');
+    
+    // Procesar el texto
+    processPastedData(pastedText);
+
+    // Limpiar y ocultar el área de pegado
+    document.getElementById('paste-textarea').value = '';
+    togglePasteArea();
+}
+
+function processPastedData(text) {
+    const rows = text.trim().split('\n');
+    if (rows.length === 0) return;
+
+    // Pedir confirmación al usuario
+    const confirmation = confirm(
+        `Se han detectado ${rows.length} tareas para importar. ¿Quieres añadirlas al cronograma actual?\n\n` +
+        "Las tareas existentes no se eliminarán."
+    );
+
+    if (!confirmation) return;
+
+    const newTasksByProject = {};
+
+    rows.forEach(row => {
+        const columns = row.split('\t'); // Separado por tabulaciones
+        if (columns.length < 2) return;
+
+        const projectName = columns[0].trim();
+        const taskName = columns[1].trim();
+
+        if (!projectName || !taskName) return;
+
+        if (!newTasksByProject[projectName]) {
+            newTasksByProject[projectName] = [];
+        }
+
+        newTasksByProject[projectName].push({
+            name: taskName,
+            duration: 2, // Duración por defecto
+            isMilestone: false,
+            textPosition: 'outside'
+        });
+    });
+
+    // Añadir los nuevos proyectos y tareas
+    for (const projectName in newTasksByProject) {
+        let project = projects.find(p => p.name.toLowerCase() === projectName.toLowerCase());
+        
+        // Si el proyecto no existe, crearlo
+        if (!project) {
+            project = {
+                name: projectName,
+                color: colorPalette[nextColorIndex % colorPalette.length],
+                tasksByRow: []
+            };
+            projects.push(project);
+            nextColorIndex++;
+        }
+
+        // Añadir las tareas al proyecto
+        newTasksByProject[projectName].forEach(newTaskData => {
+            const startWeek = findLatestEndWeek(projects.indexOf(project));
+            project.tasksByRow.push([{...newTaskData, startWeek: startWeek}]);
+        });
+    }
+
+    updatePreview();
 }
 
 // --- MANEJO DE TAREAS ---

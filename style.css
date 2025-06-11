@@ -14,10 +14,11 @@ body {
     background-color: #1E1E1E;
     color: #E0E0E0;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
 }
 
 .main-container {
@@ -27,6 +28,7 @@ body {
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     overflow: hidden;
+    color: #ff6b6b;
 }
 
 .top-bar {
@@ -103,6 +105,11 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 10px;
+}
+
+.bottom-controls div {
+    display: flex;
     gap: 10px;
 }
 
@@ -684,7 +691,49 @@ canvas {
     color: #ff6b6b;
 }
 
+footer {
+    text-align: center;
+    padding: 5px;
+    font-size: 0.9em;
+    color: #888;
+}
+
 #modal-task-name {
     margin-bottom: 15px;
     width: 400px;
+}
+
+#paste-area-container {
+    position: fixed;
+    bottom: 80px; /* Un poco por encima de la barra inferior */
+    right: 20px;
+    width: 300px;
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    z-index: 1001;
+    padding: 15px;
+}
+
+#paste-instructions {
+    font-size: 0.9em;
+    color: var(--text-color);
+    margin-bottom: 10px;
+}
+
+#paste-textarea {
+    width: 100%;
+    height: 100px;
+    background-color: #3C3C3C;
+    border: 1px solid #555;
+    color: #F0F0F0;
+    border-radius: 4px;
+    resize: none;
+    box-sizing: border-box;
+}
+
+#project-list {
+    padding: 10px;
+    padding-bottom: 60px; /* Add padding to the bottom to avoid overlap with bottom controls */
 } 

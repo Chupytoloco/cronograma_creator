@@ -33,10 +33,23 @@
         </div>
         
         <div class="bottom-controls">
-            <button id="add-project-btn" class="nice-button">Añadir Proyecto</button>
-            <label for="load-input" id="load-btn" class="nice-button">Importar</label>
-            <input type="file" id="load-input" style="display: none;" accept=".json">
+            <div>
+                <button id="add-project-btn" class="nice-button">Añadir Proyecto</button>
+                <button id="paste-table-btn" class="nice-button">Pegar Tabla</button>
+            </div>
+            <div>
+                <label for="load-input" id="load-btn" class="nice-button">Importar</label>
+                <input type="file" id="load-input" style="display: none;" accept=".json">
+            </div>
         </div>
+    </div>
+
+    <!-- Área de pegado de tabla (inicialmente oculta) -->
+    <div id="paste-area-container" style="display: none;">
+        <div id="paste-instructions">
+            Pega aquí tu tabla desde Excel (Proyecto en Columna A, Tarea en Columna B).
+        </div>
+        <textarea id="paste-textarea" placeholder="Ctrl+V"></textarea>
     </div>
 
     <!-- Modal para Añadir/Editar Proyecto -->
@@ -121,6 +134,10 @@
             </div>
         </div>
     </div>
+
+    <footer>
+        <p>Powered by juangenovardortiz@gmail.com</p>
+    </footer>
 
     <script src="script.js"></script>
     <script>
