@@ -38,8 +38,12 @@ window.addEventListener('load', () => {
     canvas = document.getElementById('ganttCanvas');
     ctx = canvas.getContext('2d');
     
-    populateMonthSelectors();
+    // El orden correcto y único de inicialización
+    populateMonthSelectors(); 
+    loadStateFromLocalStorage();
+
     document.getElementById('add-project-btn').addEventListener('click', () => openProjectModal());
+    document.getElementById('new-schedule-btn').addEventListener('click', createNewSchedule);
     document.getElementById('cronograma-title').addEventListener('input', updatePreview);
     document.getElementById('start-month').addEventListener('change', updatePreview);
     document.getElementById('end-month').addEventListener('change', updatePreview);
@@ -142,11 +146,16 @@ function makeModalDraggable(modal) {
     }
 }
 
-function populateMonthSelectors() {
+function populateMonthSelectors(forceReset = false) {
     const startMonthSelect = document.getElementById('start-month');
     const endMonthSelect = document.getElementById('end-month');
     const projectMonthSelect = document.getElementById('project-modal-start-month');
     
+    // Limpiar opciones existentes para evitar duplicados al llamar con forceReset
+    startMonthSelect.innerHTML = '';
+    endMonthSelect.innerHTML = '';
+    projectMonthSelect.innerHTML = '';
+
     months.forEach((month, index) => {
         const option1 = new Option(month, index);
         const option2 = new Option(month, index);
@@ -160,8 +169,10 @@ function populateMonthSelectors() {
     const currentMonth = currentDate.getMonth();
     const endMonth = (currentMonth + 5) % 12;
 
-    startMonthSelect.value = currentMonth;
-    endMonthSelect.value = endMonth;
+    if (forceReset) {
+        startMonthSelect.value = currentMonth;
+        endMonthSelect.value = endMonth;
+    }
 }
 
 
@@ -216,6 +227,41 @@ function deleteProject(index) {
 
 // --- GUARDAR Y CARGAR ---
 
+function saveStateToLocalStorage() {
+    try {
+        const state = {
+            title: document.getElementById('cronograma-title').value,
+            startMonth: document.getElementById('start-month').value,
+            endMonth: document.getElementById('end-month').value,
+            projects: projects
+        };
+        localStorage.setItem('ganttChartState', JSON.stringify(state));
+    } catch (error) {
+        console.error("No se pudo guardar el estado en localStorage:", error);
+    }
+}
+
+function loadStateFromLocalStorage() {
+    try {
+        const savedState = localStorage.getItem('ganttChartState');
+        if (savedState) {
+            const data = JSON.parse(savedState);
+            
+            if (data.title) document.getElementById('cronograma-title').value = data.title;
+            if (data.startMonth) document.getElementById('start-month').value = data.startMonth;
+            if (data.endMonth) document.getElementById('end-month').value = data.endMonth;
+            
+            if (data.projects && Array.isArray(data.projects)) {
+                projects.length = 0;
+                Array.prototype.push.apply(projects, data.projects);
+            }
+        }
+    } catch (error) {
+        console.error("No se pudo cargar el estado desde localStorage:", error);
+        localStorage.removeItem('ganttChartState'); // Limpiar estado corrupto
+    }
+}
+
 function saveSchedule() {
     const dataToSave = {
         title: document.getElementById('cronograma-title').value,
@@ -232,6 +278,7 @@ function saveSchedule() {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+    saveStateToLocalStorage();
 }
 
 function loadSchedule(event) {
@@ -505,6 +552,7 @@ function updatePreview() {
     animationProgress = 0;
     lastTime = 0;
     requestAnimationFrame(animate);
+    saveStateToLocalStorage();
 }
 
 function initCanvasSize() {
@@ -1257,5 +1305,26 @@ async function copyChartToClipboard() {
         console.error('Error al copiar la imagen: ', err);
         copyButton.textContent = '❌ Error';
         setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+    }
+}
+
+function createNewSchedule() {
+    const confirmation = confirm(
+        "¿Estás seguro de que quieres crear un nuevo cronograma?\n\n" +
+        "Se perderá todo el trabajo no guardado. Asegúrate de haber guardado o exportado tu cronograma actual si deseas conservarlo."
+    );
+
+    if (confirmation) {
+        // Limpiar proyectos
+        projects.length = 0;
+
+        // Resetear título
+        document.getElementById('cronograma-title').value = "Mi Cronograma";
+
+        // Resetear fechas
+        populateMonthSelectors(true); // `true` para forzar el reseteo a los valores por defecto
+
+        // Actualizar la vista
+        updatePreview();
     }
 }
