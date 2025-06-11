@@ -14,6 +14,7 @@ let lastTime = 0;
 const animationDuration = 800;
 let taskHitboxes = [];
 let projectHitboxes = [];
+let addTaskHitboxes = []; // Hitboxes para los botones de 'Añadir Tarea'
 const resizeHandleWidth = 10; // Ancho del área de redimensión
 
 const colorPalette = ['#4A90E2', '#8E44AD', '#E67E22', '#27AE60', '#F1C40F', '#C0392B', '#16A085', '#2980B9'];
@@ -50,7 +51,6 @@ window.addEventListener('load', () => {
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
     canvas.addEventListener('mousemove', handleCanvasMouseMove);
     canvas.addEventListener('mouseup', handleCanvasMouseUp);
-    canvas.addEventListener('dblclick', handleCanvasDblClick);
 
     // Listeners para el nuevo modal de proyectos
     document.getElementById('project-modal-close-btn').addEventListener('click', closeProjectModal);
@@ -214,7 +214,7 @@ function addTask(projectIndex, rowIndex) {
         startWeek: newWeek,
         duration: 4,
         isMilestone: false,
-        textPosition: 'inside'
+        textPosition: 'outside'
     };
 
     const targetRow = projects[projectIndex].tasksByRow[rowIndex];
@@ -319,7 +319,7 @@ function renderTemporaryTasks() {
                 <option value="false" ${!task.isMilestone ? 'selected' : ''}>Normal</option>
                 <option value="true" ${task.isMilestone ? 'selected' : ''}>Hito</option>
             </select>
-            <button class="delete-task-btn" data-task-id="${task.id}">&times;</button>
+            <button class="delete-task-btn" data-task-id="${task.id}">🗑️</button>
         `;
         container.appendChild(taskEl);
     });
@@ -363,7 +363,7 @@ function saveProjectFromModal() {
             startWeek: t.startWeek,
             duration: t.duration,
             isMilestone: t.isMilestone,
-            textPosition: 'inside' // Posición de texto por defecto
+            textPosition: 'outside' // Posición de texto por defecto
         }))
     };
 
@@ -425,8 +425,6 @@ function updateTaskFromModal() {
 // --- LÓGICA DE DIBUJO ---
 function updatePreview() {
     if (!canvas) return;
-    const cronogramaTitle = document.getElementById('cronograma-title').value || 'Cronograma';
-    document.getElementById('project-title-render').textContent = cronogramaTitle;
     
     totalWeeks = calculateTotalWeeks();
     initCanvasSize();
@@ -442,54 +440,16 @@ function initCanvasSize() {
 
     let totalHeight = headerHeight;
     projects.forEach(p => {
-        totalHeight += 15;
+        totalHeight += 15; // Espacio superior del proyecto
         totalHeight += p.tasksByRow.length * rowHeight;
+        totalHeight += 40; // Espacio para el botón '+ Añadir Tarea' y su padding
     });
     
-    canvas.height = (totalHeight + rowHeight) * dpr;
+    canvas.height = (totalHeight + rowHeight) * dpr; // Un rowHeight extra para padding inferior
     ctx.scale(dpr, dpr);
 }
 
 // --- MANEJADORES DE EVENTOS DEL CANVAS ---
-
-function handleCanvasDblClick(e) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    for (const hitbox of taskHitboxes) {
-        if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
-            openTaskModal(hitbox.projectIndex, hitbox.rowIndex, hitbox.taskIndex);
-            return;
-        }
-    }
-
-    for (const hitbox of projectHitboxes) {
-        if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
-            createFloatingInput(hitbox);
-            return;
-        }
-    }
-
-    let currentY = headerHeight;
-    for (let pIndex = 0; pIndex < projects.length; pIndex++) {
-        const projectStartY = currentY;
-        const projectEndY = projectStartY + 15 + projects[pIndex].tasksByRow.length * rowHeight;
-        
-        if (y >= projectStartY && y <= projectEndY) {
-             let rIndex = Math.floor((y - (projectStartY + 15)) / rowHeight);
-             rIndex = Math.max(0, rIndex);
-
-             if (rIndex >= projects[pIndex].tasksByRow.length) {
-                 projects[pIndex].tasksByRow.push([]);
-                 rIndex = projects[pIndex].tasksByRow.length - 1;
-             }
-             addTask(pIndex, rIndex);
-             return;
-        }
-        currentY = projectEndY;
-    }
-}
 
 function handleCanvasMouseDown(e) {
     if (document.querySelector('.floating-input')) return;
@@ -537,6 +497,41 @@ function handleCanvasMouseDown(e) {
 }
 
 function handleCanvasMouseUp(e) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // --- Lógica de Edición por Clic ---
+    if (!draggingTask?.didMove && !resizingTask) {
+        // Buscar si se hizo clic en el botón '+' para añadir tarea
+        for (const hitbox of addTaskHitboxes) {
+            if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+                addSimpleTask(hitbox.projectIndex);
+                return; // Acción completada
+            }
+        }
+        
+        // Buscar si se hizo clic en una tarea
+        for (const hitbox of taskHitboxes) {
+            if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+                openTaskModal(hitbox.projectIndex, hitbox.rowIndex, hitbox.taskIndex);
+                draggingTask = null; // Prevenir cualquier acción de arrastre residual
+                return;
+            }
+        }
+
+        // Buscar si se hizo clic en el nombre de un proyecto
+        for (const hitbox of projectHitboxes) {
+            if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+                createFloatingInput(hitbox);
+                draggingTask = null; // Prevenir cualquier acción de arrastre residual
+                return;
+            }
+        }
+    }
+
+
+    // --- Lógica de Arrastrar y Soltar ---
     if (resizingTask) {
         const { projectIndex, rowIndex, taskIndex } = resizingTask;
         let collision = false;
@@ -582,7 +577,20 @@ function handleCanvasMouseMove(e) {
                  break;
              }
         }
-        if (!onTask && getIconUnderCursor(x, y)) newCursor = 'pointer';
+
+        if (!onTask) {
+            for (const hitbox of addTaskHitboxes) {
+                if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+                    newCursor = 'pointer';
+                    break;
+                }
+            }
+        }
+        
+        if (!onTask && newCursor === 'default' && getIconUnderCursor(x, y)) {
+            newCursor = 'pointer';
+        }
+
         canvas.style.cursor = newCursor;
         return;
     }
@@ -755,38 +763,40 @@ function drawProjects() {
     let y = headerHeight;
     taskHitboxes = [];
     projectHitboxes = [];
+    addTaskHitboxes = []; // Limpiar hitboxes en cada redibujado
     
     projects.forEach((project, projectIndex) => {
         y += 15; 
 
-        if (project.tasksByRow.length > 0) {
-            const projectHeight = project.tasksByRow.length * rowHeight;
-            const projectCenterY = y + projectHeight / 2;
-            const textMetrics = ctx.measureText(project.name);
-            const textX = 20;
-            const textY = projectCenterY;
+        // Dibujar siempre el nombre del proyecto y sus iconos
+        const projectHeight = project.tasksByRow.length * rowHeight;
+        const projectCenterY = y + projectHeight / 2;
+        const textMetrics = ctx.measureText(project.name);
+        const textX = 20;
+        
+        // Si no hay tareas, centrar el texto en el espacio de margen superior
+        const textY = (project.tasksByRow.length > 0) ? projectCenterY : y + (15 / 2);
 
-            ctx.fillStyle = project.color;
-            ctx.font = projectFont;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(project.name, textX, textY);
+        ctx.fillStyle = project.color;
+        ctx.font = projectFont;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(project.name, textX, textY);
 
-            const projectHitbox = {
-                x: textX,
-                y: projectCenterY - rowHeight / 2,
-                width: textMetrics.width,
-                height: rowHeight,
-                projectIndex
-            };
-            projectHitboxes.push(projectHitbox);
-            
-            const isHovering = lastMousePosition.x >= projectHitbox.x - 10 && lastMousePosition.x <= projectHitbox.x + projectHitbox.width + 50 &&
-                               lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
+        const projectHitbox = {
+            x: textX,
+            y: textY - rowHeight / 2,
+            width: textMetrics.width,
+            height: rowHeight,
+            projectIndex
+        };
+        projectHitboxes.push(projectHitbox);
+        
+        const isHovering = lastMousePosition.x >= projectHitbox.x - 10 && lastMousePosition.x <= projectHitbox.x + projectHitbox.width + 50 &&
+                           lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
 
-            if (isHovering && !draggingTask && !resizingTask) {
-                drawProjectIcons(ctx, projectHitbox);
-            }
+        if (isHovering && !draggingTask && !resizingTask) {
+            drawProjectIcons(ctx, projectHitbox);
         }
 
         project.tasksByRow.forEach((taskRow, rowIndex) => {
@@ -795,6 +805,30 @@ function drawProjects() {
             });
             y += rowHeight;
         });
+
+        // Dibujar botón de 'Añadir Tarea'
+        const buttonY = y + 10;
+        const buttonHeight = 25;
+        ctx.fillStyle = '#3a3a3a';
+        ctx.strokeStyle = '#555';
+        ctx.lineWidth = 1;
+        roundRect(ctx, projectLabelWidth, buttonY, 120, buttonHeight, 5, true, true);
+
+        ctx.fillStyle = textColor;
+        ctx.font = '13px Poppins';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('+ Añadir tarea', projectLabelWidth + 10, buttonY + buttonHeight / 2);
+
+        addTaskHitboxes.push({
+            x: projectLabelWidth,
+            y: buttonY,
+            width: 120,
+            height: buttonHeight,
+            projectIndex
+        });
+        
+        y += buttonHeight + 15; // Espacio extra después del botón
     });
 }
 
@@ -1028,4 +1062,38 @@ function checkCollision(taskA, taskB) {
     const endA = taskA.startWeek + taskA.duration;
     const endB = taskB.startWeek + taskB.duration;
     return (endA > taskB.startWeek && taskA.startWeek < endB);
+}
+
+function findLatestEndWeek(projectIndex) {
+    let latestEnd = 0;
+    const project = projects[projectIndex];
+    if (!project) return 1;
+
+    project.tasksByRow.forEach(row => {
+        row.forEach(task => {
+            const endWeek = task.startWeek + task.duration;
+            if (endWeek > latestEnd) {
+                latestEnd = endWeek;
+            }
+        });
+    });
+    // Si no hay tareas, empezar en la semana 1. Si las hay, empezar después de la última.
+    return latestEnd === 0 ? 1 : latestEnd;
+}
+
+function addSimpleTask(projectIndex) {
+    const startWeek = findLatestEndWeek(projectIndex);
+    
+    const newTask = {
+        name: 'Nueva Tarea',
+        startWeek: startWeek,
+        duration: 2,
+        isMilestone: false,
+        textPosition: 'outside'
+    };
+
+    // Añadir la tarea en una nueva fila para simplicidad
+    projects[projectIndex].tasksByRow.push([newTask]);
+    
+    updatePreview();
 }

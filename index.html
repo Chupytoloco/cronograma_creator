@@ -11,9 +11,8 @@
     <div class="main-container">
         <div class="top-bar">
             <div class="title-container">
-                <label for="cronograma-title">Título:</label>
-                <input type="text" id="cronograma-title" value="Mi Cronograma">
                 <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma">💾</button>
+                <input type="text" id="cronograma-title" value="Mi Cronograma" placeholder="Título del Cronograma">
             </div>
             <div class="controls">
                 <label for="start-month">Inicio:</label>
@@ -28,7 +27,6 @@
         </div>
         
         <div id="canvas-container">
-            <div id="project-title-render">Cronograma</div>
             <canvas id="ganttCanvas"></canvas>
         </div>
         
@@ -119,4 +117,4 @@
         document.getElementById('main-stylesheet').href = `style.css?v=${new Date().getTime()}`;
     </script>
 </body>
-</html> 
+</html>
