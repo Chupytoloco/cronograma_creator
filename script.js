@@ -154,24 +154,26 @@ function populateMonthSelectors(forceReset = false) {
     const endMonthSelect = document.getElementById('end-month');
     const projectMonthSelect = document.getElementById('project-modal-start-month');
     
-    // Limpiar opciones existentes para evitar duplicados al llamar con forceReset
+    // Limpiar opciones existentes para evitar duplicados
     startMonthSelect.innerHTML = '';
     endMonthSelect.innerHTML = '';
     projectMonthSelect.innerHTML = '';
 
     months.forEach((month, index) => {
-        const option1 = new Option(month, index);
-        const option2 = new Option(month, index);
-        const option3 = new Option(month, index);
-        startMonthSelect.add(option1);
-        endMonthSelect.add(option2);
-        projectMonthSelect.add(option3);
+        startMonthSelect.add(new Option(month, index));
+        endMonthSelect.add(new Option(month, index));
+        projectMonthSelect.add(new Option(month, index));
     });
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
     const endMonth = (currentMonth + 5) % 12;
 
+    // Siempre establece los valores por defecto. `loadStateFromLocalStorage` los sobreescribirá si es necesario.
+    startMonthSelect.value = currentMonth;
+    endMonthSelect.value = endMonth;
+
+    // Si se fuerza un reseteo (botón 'Nuevo'), también se aplican los valores por defecto.
     if (forceReset) {
         startMonthSelect.value = currentMonth;
         endMonthSelect.value = endMonth;
