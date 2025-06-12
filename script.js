@@ -925,6 +925,11 @@ function draw() {
     if (!ctx) return;
     const dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
+
+    // Dibujar el fondo principal
+    ctx.fillStyle = '#252526';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
     drawGrid();
     drawProjects();
 }
@@ -1320,18 +1325,23 @@ function findLatestEndWeek(projectIndex) {
 }
 
 function addSimpleTask(projectIndex) {
-    const startWeek = findLatestEndWeek(projectIndex);
-    
+    const p = projects[projectIndex];
+    if (!p) return;
+
+    // Encontrar la última semana para este proyecto para que la nueva tarea empiece después
+    const latestEndWeek = findLatestEndWeek(projectIndex);
+
     const newTask = {
         name: 'Nueva Tarea',
-        startWeek: startWeek,
-        duration: 2,
-        isMilestone: false,
-        textPosition: 'outside'
+        startWeek: Math.ceil(latestEndWeek), // Empezar justo después
+        duration: 2, // Duración por defecto
+        type: 'normal',
+        textPosition: 'inside'
     };
 
-    // Añadir la tarea en una nueva fila para simplicidad
-    projects[projectIndex].tasksByRow.push([newTask]);
+    // Añadir la tarea a la primera fila libre o a una nueva
+    // (Lógica simplificada: la añade al final)
+    p.tasksByRow.push([newTask]);
     
     updatePreview();
 }
@@ -1339,89 +1349,106 @@ function addSimpleTask(projectIndex) {
 // --- FUNCIONALIDAD DE COPIAR IMAGEN ---
 
 async function copyChartToClipboard() {
-    const copyButton = document.getElementById('copy-btn');
-    const originalText = copyButton.textContent;
+    console.log("Iniciando copia al portapapeles...");
+
+    // 1. Quitar foco para que no salgan inputs en la captura
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Guardar estado original del canvas y de las semanas totales
+    const originalWidth = canvas.width;
+    const originalHeight = canvas.height;
+    const originalTotalWeeks = totalWeeks;
     
-    // --- 1. Crear canvas temporal ---
-    const originalCanvas = document.getElementById('ganttCanvas');
-    const tempCanvas = document.createElement('canvas');
-    const dpr = window.devicePixelRatio || 1;
-
-    // --- 2. Calcular dimensiones exactas del contenido ---
-    const contentWidth = originalCanvas.width / dpr;
-    let contentHeight = headerHeight;
-    projects.forEach(p => {
-        contentHeight += 15; // Espacio superior
-        contentHeight += p.tasksByRow.length * rowHeight;
-        contentHeight += 15; // Espacio inferior
-    });
-    contentHeight += 20; // Padding final
-
-    tempCanvas.width = contentWidth * dpr;
-    tempCanvas.height = contentHeight * dpr;
-    
-    const tempCtx = tempCanvas.getContext('2d');
-    tempCtx.scale(dpr, dpr);
-
-    // --- 3. Dibujar en el canvas temporal ---
-    const originalGlobalCtx = ctx;
-    const originalGlobalCanvas = canvas;
-    
-    // Suplantar temporalmente el canvas y contexto globales
-    ctx = tempCtx;
-    canvas = tempCanvas;
-    isDrawingForExport = true;
-
-    // Dibujar el fondo
-    ctx.fillStyle = '#252526';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Dibujar el título del cronograma
-    const cronogramaTitle = document.getElementById('cronograma-title').value || 'Cronograma';
-    ctx.fillStyle = textColor;
-    ctx.font = 'bold 24px Poppins';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillText(cronogramaTitle, 20, 20);
-    
-    // Reutilizar las funciones de dibujado principales
-    drawGrid();
-    drawProjects();
-
-    // Restaurar los globales
-    ctx = originalGlobalCtx;
-    canvas = originalGlobalCanvas;
-    isDrawingForExport = false;
-
-    // --- 4. Copiar al portapapeles ---
     try {
-        tempCanvas.toBlob(async (blob) => {
+        // 2. Calcular las dimensiones reales necesarias para la exportación
+        let maxEndWeek = 0;
+        projects.forEach(p => {
+            p.tasksByRow.forEach(row => {
+                row.forEach(task => {
+                    const endWeek = task.startWeek + task.duration;
+                    if (endWeek > maxEndWeek) {
+                        maxEndWeek = endWeek;
+                    }
+                });
+            });
+        });
+
+        const selectorWeeks = calculateTotalWeeks();
+        const exportTotalWeeks = Math.ceil(Math.max(selectorWeeks, maxEndWeek)) + 1; // +1 semana de padding
+
+        const EXPORT_WEEK_WIDTH = 50; // Ancho fijo por semana para una buena resolución
+        
+        const exportWidth = projectLabelWidth + (exportTotalWeeks * EXPORT_WEEK_WIDTH);
+        const exportHeight = headerHeight + projects.reduce((acc, p) => acc + Math.max(1, p.tasksByRow.length) * rowHeight, 0) + rowHeight; // Padding inferior
+
+        // 3. Redimensionar canvas temporalmente y ajustar semanas
+        canvas.width = exportWidth;
+        canvas.height = exportHeight;
+        totalWeeks = exportTotalWeeks; // Override global para el dibujado
+
+        // 4. Dibujar el cronograma en el canvas redimensionado y limpio
+        isDrawingForExport = true;
+        draw(); 
+
+        // 5. Convertir el canvas a Blob y copiar al portapapeles
+        canvas.toBlob(async (blob) => {
             if (!blob) {
-                throw new Error('No se pudo generar la imagen.');
+                console.error("No se pudo generar el blob del canvas.");
+                return;
             }
-            await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob })
-            ]);
+            try {
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+                console.log('¡Cronograma copiado como imagen!');
+                
+                // Mostrar feedback visual
+                const feedbackId = 'copy-feedback';
+                let copyFeedback = document.getElementById(feedbackId);
+                if (!copyFeedback) {
+                    copyFeedback = document.createElement('div');
+                    copyFeedback.id = feedbackId;
+                    copyFeedback.textContent = '¡Copiado!';
+                    copyFeedback.style.position = 'fixed';
+                    copyFeedback.style.top = '20px';
+                    copyFeedback.style.left = '50%';
+                    copyFeedback.style.transform = 'translateX(-50%)';
+                    copyFeedback.style.padding = '10px 20px';
+                    copyFeedback.style.background = '#28a745';
+                    copyFeedback.style.color = 'white';
+                    copyFeedback.style.borderRadius = '5px';
+                    copyFeedback.style.zIndex = '1001';
+                    document.body.appendChild(copyFeedback);
+                }
+                
+                copyFeedback.style.display = 'block';
+                setTimeout(() => {
+                    copyFeedback.style.display = 'none';
+                }, 2000);
 
-            // Feedback al usuario
-            copyButton.textContent = '✅ Copiado';
-            setTimeout(() => { copyButton.textContent = originalText; }, 2000);
-
+            } catch (err) {
+                console.error('Error al copiar al portapapeles:', err);
+                alert('Error al copiar la imagen. Es posible que tu navegador no lo soporte o no tenga los permisos necesarios.');
+            }
         }, 'image/png');
+
     } catch (err) {
-        console.error('Error al copiar la imagen: ', err);
-        copyButton.textContent = '❌ Error';
-        setTimeout(() => { copyButton.textContent = originalText; }, 2000);
+        console.error('Error al preparar el canvas para la copia:', err);
+    } finally {
+        // 6. Restaurar el estado original del canvas
+        canvas.width = originalWidth;
+        canvas.height = originalHeight;
+        totalWeeks = originalTotalWeeks;
+        isDrawingForExport = false;
+        draw(); // Volver a dibujar la vista normal
     }
 }
 
 function createNewSchedule() {
-    const confirmation = confirm(
-        "¿Estás seguro de que quieres crear un nuevo cronograma?\n\n" +
-        "Se perderá todo el trabajo no guardado. Asegúrate de haber guardado o exportado tu cronograma actual si deseas conservarlo."
-    );
-
-    if (confirmation) {
+    if (confirm("¿Estás seguro de que quieres empezar un nuevo cronograma? Se perderán todos los cambios no guardados.")) {
         // Limpiar proyectos
         projects.length = 0;
 
