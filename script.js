@@ -716,7 +716,16 @@ function handleCanvasMouseDown(e) {
                 ghostTask = { ...task };
                 canvas.style.cursor = 'ew-resize';
             } else {
-                draggingTask = { ...hitbox, offsetX: x - hitbox.x, offsetY: y - hitbox.y, didMove: false };
+                draggingTask = {
+                    projectIndex: hitbox.projectIndex,
+                    rowIndex: hitbox.rowIndex,
+                    taskIndex: hitbox.taskIndex,
+                    offsetX: x - hitbox.x,
+                    offsetY: y - hitbox.y,
+                    didMove: false,
+                    startX: x, // Guardar X inicial
+                    startY: y  // Guardar Y inicial
+                };
                 canvas.style.cursor = 'grabbing';
             }
             e.preventDefault();
@@ -733,8 +742,86 @@ function handleCanvasMouseUp(e) {
     const wasDragging = draggingTask?.didMove;
     const wasResizing = !!resizingTask;
 
-    // --- Lógica de Edición por Clic ---
+    // --- Finalizar Redimensión ---
+    if (resizingTask) {
+        projects[resizingTask.projectIndex].tasksByRow[resizingTask.rowIndex][resizingTask.taskIndex] = ghostTask;
+        updatePreview();
+    }
+
+    // --- Finalizar Arrastre ---
+    if (draggingTask) {
+        if (wasDragging) {
+            // Lógica de soltar la tarea (solo si se movió)
+            const mouseY = y;
+            const { projectIndex, rowIndex, taskIndex } = draggingTask;
+            const project = projects[projectIndex];
+
+            if (project && project.tasksByRow[rowIndex] && project.tasksByRow[rowIndex][taskIndex]) {
+                const task = { ...project.tasksByRow[rowIndex][taskIndex] };
+                project.tasksByRow[rowIndex].splice(taskIndex, 1);
+                if (project.tasksByRow[rowIndex].length === 0) {
+                    project.tasksByRow.splice(rowIndex, 1);
+                }
+
+                let projectTopY = headerHeight;
+                for (let i = 0; i < projectIndex; i++) {
+                    projectTopY += 15 + projects[i].tasksByRow.length * rowHeight + 40;
+                }
+                projectTopY += 15;
+
+                const projectContentHeight = project.tasksByRow.length * rowHeight;
+                const projectBottomY = projectTopY + projectContentHeight;
+
+                if (mouseY < projectTopY) {
+                    project.tasksByRow.unshift([task]);
+                } else if (mouseY > projectBottomY) {
+                    project.tasksByRow.push([task]);
+                } else {
+                    const relativeY = mouseY - projectTopY;
+                    let targetRowIndex = Math.floor(relativeY / rowHeight);
+                    targetRowIndex = Math.max(0, Math.min(targetRowIndex, project.tasksByRow.length));
+                    const targetRow = project.tasksByRow[targetRowIndex];
+                    let collision = false;
+                    if (targetRow) {
+                        for (const existingTask of targetRow) {
+                            if (checkCollision(task, existingTask)) {
+                                collision = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (targetRow && !collision) {
+                        targetRow.push(task);
+                    } else {
+                        project.tasksByRow.splice(collision ? targetRowIndex + 1 : targetRowIndex, 0, [task]);
+                    }
+                }
+            }
+            updatePreview();
+        }
+    }
+
+    // Limpiar estado y resetear cursor al finalizar cualquier acción
+    if (resizingTask) resizingTask = null;
+    if (ghostTask) ghostTask = null;
+    if (draggingTask) draggingTask = null;
+    canvas.style.cursor = 'default';
+
+
+    // --- Lógica de Edición por Clic (se ejecuta si no hubo arrastre ni redimensión) ---
     if (!wasDragging && !wasResizing) {
+        // Buscar si se hizo clic en los iconos de un proyecto
+        const iconClicked = getIconUnderCursor(x, y);
+        if (iconClicked) {
+            if (iconClicked.type === 'delete') {
+                deleteProject(iconClicked.projectIndex);
+                return;
+            } else if (iconClicked.type === 'edit') {
+                openProjectModal(iconClicked.projectIndex);
+                return;
+            }
+        }
+
         // Buscar si se hizo clic en el botón '+' para añadir tarea
         for (const hitbox of addTaskHitboxes) {
             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
@@ -746,45 +833,29 @@ function handleCanvasMouseUp(e) {
         // Buscar si se hizo clic en una tarea
         for (const hitbox of taskHitboxes) {
             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
-                openTaskModal(hitbox.projectIndex, hitbox.rowIndex, hitbox.taskIndex);
-                draggingTask = null; // Prevenir cualquier acción de arrastre residual
-                return;
+                // El clic está dentro de la tarea. Ahora comprobamos si está en los bordes para redimensionar.
+                const task = projects[hitbox.projectIndex].tasksByRow[hitbox.rowIndex][hitbox.taskIndex];
+                
+                const onLeftEdge = x < hitbox.x + resizeHandleWidth;
+                const onRightEdge = x > hitbox.x + hitbox.width - resizeHandleWidth;
+
+                // Abrir el modal solo si es un hito (que no se redimensiona) o si el clic
+                // no fue en ninguno de los bordes de redimensión.
+                if (task.isMilestone || (!onLeftEdge && !onRightEdge)) {
+                    openTaskModal(hitbox.projectIndex, hitbox.rowIndex, hitbox.taskIndex);
+                    return;
+                }
             }
         }
 
-        // Buscar si se hizo clic en el nombre de un proyecto
+        // Buscar si se hizo clic en el nombre de un proyecto para editarlo
         for (const hitbox of projectHitboxes) {
-            if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+            // Solo activar si el clic es en el área del texto, no en toda la fila del proyecto
+            if (x >= hitbox.x && x <= hitbox.x + projectLabelWidth && y >= hitbox.y && y <= hitbox.y + rowHeight) {
                 createFloatingInput(hitbox);
-                draggingTask = null; // Prevenir cualquier acción de arrastre residual
                 return;
             }
         }
-    }
-
-
-    // --- Lógica de Arrastrar y Soltar ---
-    if (resizingTask) {
-        const { projectIndex, rowIndex, taskIndex } = resizingTask;
-        let collision = false;
-        for (let i = 0; i < projects[projectIndex].tasksByRow[rowIndex].length; i++) {
-            if (i === taskIndex) continue;
-            if (checkCollision(ghostTask, projects[projectIndex].tasksByRow[rowIndex][i])) {
-                collision = true;
-                break;
-            }
-        }
-        if (!collision) {
-            projects[projectIndex].tasksByRow[rowIndex][taskIndex] = ghostTask;
-        }
-        resizingTask = null;
-        ghostTask = null;
-    }
-
-    if (draggingTask) draggingTask = null;
-    
-    if (wasDragging || wasResizing) {
-        updatePreview();
     }
 }
 
@@ -793,10 +864,12 @@ function handleCanvasMouseMove(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
+    // --- Lógica para cambiar el cursor al pasar por encima ---
     if (!draggingTask && !resizingTask) {
         let newCursor = 'default';
         let onTask = false;
         
+        // Comprobar si está sobre una tarea (y si es redimensionable)
         for (const hitbox of taskHitboxes) {
              if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
                  onTask = true;
@@ -812,6 +885,7 @@ function handleCanvasMouseMove(e) {
              }
         }
 
+        // Comprobar si está sobre el botón '+'
         if (!onTask) {
             for (const hitbox of addTaskHitboxes) {
                 if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
@@ -821,17 +895,19 @@ function handleCanvasMouseMove(e) {
             }
         }
         
+        // Comprobar si está sobre un icono de proyecto
         if (!onTask && newCursor === 'default' && getIconUnderCursor(x, y)) {
             newCursor = 'pointer';
         }
 
         canvas.style.cursor = newCursor;
-        return;
+        return; // Salir si no estamos arrastrando o redimensionando
     }
 
+    // --- Lógica de Redimensión ---
     if (resizingTask) {
         const weekWidth = (canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth) / totalWeeks;
-        const currentWeek = Math.round((x - projectLabelWidth) / weekWidth) + 1;
+        const currentWeek = Math.round((x - projectLabelWidth) / weekWidth);
         
         if (resizingTask.handle === 'left') {
             const startDiff = ghostTask.startWeek - currentWeek;
@@ -846,77 +922,54 @@ function handleCanvasMouseMove(e) {
                 ghostTask.duration = newDuration;
             }
         }
-        draw();
+        draw(); // Redibujar para mostrar la tarea "fantasma"
         return;
     }
 
+    // --- Lógica de Arrastre ---
     if (draggingTask) {
-        draggingTask.didMove = true;
-        const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
-        const weekWidth = chartWidth / totalWeeks;
-        let newStartWeek = Math.round((x - projectLabelWidth - draggingTask.offsetX) / weekWidth) + 1;
-        newStartWeek = Math.max(1, Math.min(newStartWeek, totalWeeks));
-
-        let targetProjectIndex = -1, targetRowIndex = -1;
-        let currentY = headerHeight;
-
-        for (let i = 0; i < projects.length; i++) {
-            const projectStartY = currentY + 15;
-            const projectContentHeight = projects[i].tasksByRow.length * rowHeight;
-            const isLastProject = i === projects.length - 1;
-            const droppableHeight = projectContentHeight + (isLastProject ? rowHeight : 0);
-
-            if (y >= projectStartY && y < projectStartY + droppableHeight) {
-                targetProjectIndex = i;
-                targetRowIndex = Math.floor((y - projectStartY) / rowHeight);
-                break;
+        // Solo marcar como arrastre si se supera el umbral
+        if (!draggingTask.didMove) {
+            const dx = x - draggingTask.startX;
+            const dy = y - draggingTask.startY;
+            if (Math.sqrt(dx * dx + dy * dy) > 5) { // Umbral de 5px
+                draggingTask.didMove = true;
             }
-            currentY += (15 + projectContentHeight);
         }
 
-        if (targetProjectIndex === -1) return;
+        // Si es un arrastre confirmado, ejecutar la lógica
+        if (draggingTask.didMove) {
+            const { projectIndex, rowIndex, taskIndex } = draggingTask;
+            const task = projects[projectIndex].tasksByRow[rowIndex][taskIndex];
 
-        const originalTaskState = { ...draggingTask };
-        const positionChanged = targetProjectIndex !== originalTaskState.projectIndex || targetRowIndex !== originalTaskState.rowIndex;
-        
-        const taskObject = projects[originalTaskState.projectIndex].tasksByRow[originalTaskState.rowIndex][originalTaskState.taskIndex];
-        taskObject.startWeek = newStartWeek;
+            // Calcular la nueva semana de inicio basado en la posición del ratón
+            const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
+            const weekWidth = chartWidth / totalWeeks;
+            let newStartWeek = Math.round((x - projectLabelWidth - draggingTask.offsetX) / weekWidth);
+            newStartWeek = Math.max(0, Math.min(newStartWeek, totalWeeks - task.duration));
+            task.startWeek = newStartWeek;
 
-        if (positionChanged) {
-            const [movedTask] = projects[originalTaskState.projectIndex].tasksByRow[originalTaskState.rowIndex].splice(originalTaskState.taskIndex, 1);
-            const sourceRow = projects[originalTaskState.projectIndex].tasksByRow[originalTaskState.rowIndex];
+            // Calcular el destino potencial para el feedback visual
+            let projectTopY = headerHeight;
+            for (let i = 0; i < projectIndex; i++) {
+                projectTopY += 15 + projects[i].tasksByRow.length * rowHeight + 40;
+            }
+            projectTopY += 15;
 
-            if (sourceRow && sourceRow.length === 0 && projects[originalTaskState.projectIndex].tasksByRow.length > 1) {
-                projects[originalTaskState.projectIndex].tasksByRow.splice(originalTaskState.rowIndex, 1);
-                if (originalTaskState.projectIndex === targetProjectIndex && originalTaskState.rowIndex < targetRowIndex) {
-                    targetRowIndex--;
-                }
+            const numRows = projects[projectIndex].tasksByRow.length;
+            const projectBottomY = projectTopY + numRows * rowHeight;
+            
+            if (y > projectTopY - rowHeight / 2 && y < projectBottomY + rowHeight / 2) {
+                const relativeY = y - projectTopY;
+                let targetRowIndex = Math.round(relativeY / rowHeight);
+                targetRowIndex = Math.max(0, Math.min(targetRowIndex, numRows));
+                draggingTask.dropTarget = { projectIndex, rowIndex: targetRowIndex };
+            } else {
+                draggingTask.dropTarget = null;
             }
             
-            let targetRow = projects[targetProjectIndex].tasksByRow[targetRowIndex];
-            if (!targetRow) {
-                 projects[targetProjectIndex].tasksByRow.push([movedTask]);
-                 draggingTask.rowIndex = projects[targetProjectIndex].tasksByRow.length - 1;
-                 draggingTask.taskIndex = 0;
-            } else {
-                let collision = false;
-                for(const existing of targetRow) if(checkCollision(movedTask, existing)) collision = true;
-                
-                if (collision) {
-                    projects[targetProjectIndex].tasksByRow.splice(targetRowIndex + 1, 0, [movedTask]);
-                    draggingTask.rowIndex = targetRowIndex + 1;
-                    draggingTask.taskIndex = 0;
-                } else {
-                    targetRow.push(movedTask);
-                    draggingTask.rowIndex = targetRowIndex;
-                    draggingTask.taskIndex = targetRow.length - 1;
-                }
-            }
-            draggingTask.projectIndex = targetProjectIndex;
-        } else {
-            taskObject.startWeek = newStartWeek;
+            draw();
         }
-        draw();
     }
 }
 
@@ -932,13 +985,19 @@ function draw() {
 
     drawGrid();
     drawProjects();
+
+    if (draggingTask && draggingTask.didMove) {
+        drawGhostTask();
+    }
 }
 
 function drawGrid() {
     ctx.fillStyle = '#1E1E1E';
     ctx.fillRect(0, 0, canvas.width, headerHeight);
     
-    const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
+    const dpr = ctx.getTransform().a || 1;
+    const logicalCanvasWidth = canvas.width / dpr;
+    const chartWidth = logicalCanvasWidth - projectLabelWidth;
     const weekWidth = chartWidth / totalWeeks;
     const startDate = getStartDate();
     
@@ -1044,12 +1103,23 @@ function drawProjects() {
             drawProjectIcons(ctx, projectHitbox);
         }
 
-        project.tasksByRow.forEach((taskRow, rowIndex) => {
-            taskRow.forEach((task, taskIndex) => {
-                drawTaskBar(task, project, y + rowHeight / 2, projectIndex, rowIndex, taskIndex);
-            });
-            y += rowHeight;
-        });
+        const isDropTargetProject = draggingTask && draggingTask.didMove && draggingTask.dropTarget?.projectIndex === projectIndex;
+        const dropRowIndex = isDropTargetProject ? draggingTask.dropTarget.rowIndex : -1;
+
+        const numRows = project.tasksByRow.length;
+        for (let i = 0; i <= numRows; i++) {
+            if (isDropTargetProject && i === dropRowIndex) {
+                drawPlaceholder(y);
+                y += rowHeight;
+            }
+
+            if (i < numRows) {
+                project.tasksByRow[i].forEach((task, taskIndex) => {
+                    drawTaskBar(task, project, y + rowHeight / 2, projectIndex, i, taskIndex);
+                });
+                y += rowHeight;
+            }
+        }
 
         // Dibujar botón de 'Añadir Tarea'
         if (!isDrawingForExport) {
@@ -1080,7 +1150,14 @@ function drawProjects() {
 }
 
 function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
-    const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
+    const isDraggingThisTask = draggingTask && draggingTask.projectIndex === projectIndex && draggingTask.rowIndex === rowIndex && draggingTask.taskIndex === taskIndex;
+    if (isDraggingThisTask) {
+        return; // El "fantasma" se dibujará por separado para que siga al cursor
+    }
+    
+    const dpr = ctx.getTransform().a || 1;
+    const logicalCanvasWidth = canvas.width / dpr;
+    const chartWidth = logicalCanvasWidth - projectLabelWidth;
     const weekWidth = chartWidth / totalWeeks;
     const barHeight = 30;
     const barY = y - barHeight / 2;
@@ -1167,6 +1244,56 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
             }
         }
     }
+}
+
+function drawPlaceholder(y) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+    const dpr = window.devicePixelRatio || 1;
+    ctx.fillRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
+    ctx.restore();
+}
+
+function drawGhostTask() {
+    const { projectIndex, rowIndex, taskIndex, offsetX, offsetY } = draggingTask;
+    const task = projects[projectIndex].tasksByRow[rowIndex][taskIndex];
+    const project = projects[projectIndex];
+
+    // Calcular posición y dimensiones
+    const barHeight = 30;
+    const barY = lastMousePosition.y - offsetY;
+    const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
+    const weekWidth = chartWidth / totalWeeks;
+    const startX = projectLabelWidth + (task.startWeek - 1) * weekWidth;
+    const barWidth = task.duration * weekWidth;
+
+    // Dibujar con transparencia
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = project.color;
+
+    if (task.isMilestone) {
+        const diamondSize = 20;
+        ctx.save();
+        ctx.translate(startX + diamondSize / 2, lastMousePosition.y);
+        ctx.rotate(Math.PI / 4);
+        ctx.fillRect(-diamondSize / 2, -diamondSize / 2, diamondSize, diamondSize);
+        ctx.restore();
+    } else {
+        roundRect(ctx, startX, barY, barWidth, barHeight, 8, true, false);
+    }
+    
+    // Dibujar el texto dentro del fantasma
+    ctx.font = taskFont;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillText(task.name, startX + 15, barY + barHeight / 2);
+
+    ctx.globalAlpha = 1.0;
 }
 
 // --- FUNCIONES AUXILIARES ---
@@ -1357,40 +1484,45 @@ async function copyChartToClipboard() {
     }
     await new Promise(resolve => setTimeout(resolve, 50));
 
-    // Guardar estado original del canvas y de las semanas totales
-    const originalWidth = canvas.width;
-    const originalHeight = canvas.height;
+    // Guardar estado original
     const originalTotalWeeks = totalWeeks;
+    ctx.save(); // Guarda el estado del contexto actual (transformaciones, etc.)
     
     try {
-        // 2. Calcular las dimensiones reales necesarias para la exportación
+        // 2. Calcular las dimensiones lógicas finales para la exportación
         let maxEndWeek = 0;
         projects.forEach(p => {
             p.tasksByRow.forEach(row => {
                 row.forEach(task => {
-                    const endWeek = task.startWeek + task.duration;
-                    if (endWeek > maxEndWeek) {
-                        maxEndWeek = endWeek;
-                    }
+                    maxEndWeek = Math.max(maxEndWeek, task.startWeek + task.duration);
                 });
             });
         });
 
         const selectorWeeks = calculateTotalWeeks();
-        const exportTotalWeeks = Math.ceil(Math.max(selectorWeeks, maxEndWeek)) + 1; // +1 semana de padding
+        const exportTotalWeeks = Math.ceil(Math.max(selectorWeeks, maxEndWeek)) + 1;
 
-        const EXPORT_WEEK_WIDTH = 50; // Ancho fijo por semana para una buena resolución
-        
-        const exportWidth = projectLabelWidth + (exportTotalWeeks * EXPORT_WEEK_WIDTH);
-        const exportHeight = headerHeight + projects.reduce((acc, p) => acc + Math.max(1, p.tasksByRow.length) * rowHeight, 0) + rowHeight; // Padding inferior
+        const EXPORT_WEEK_WIDTH = 50;
+        const exportLogicalWidth = projectLabelWidth + (exportTotalWeeks * EXPORT_WEEK_WIDTH);
 
-        // 3. Redimensionar canvas temporalmente y ajustar semanas
-        canvas.width = exportWidth;
-        canvas.height = exportHeight;
-        totalWeeks = exportTotalWeeks; // Override global para el dibujado
+        let exportLogicalHeight = headerHeight;
+        projects.forEach(p => {
+            exportLogicalHeight += 15;
+            const projectRows = p.tasksByRow.length;
+            exportLogicalHeight += (projectRows === 0 ? rowHeight : projectRows * rowHeight);
+        });
+        exportLogicalHeight += rowHeight;
 
-        // 4. Dibujar el cronograma en el canvas redimensionado y limpio
+        // 3. Preparar el canvas para la exportación en alta resolución (DPR=2)
+        const EXPORT_DPR = 2;
+        canvas.width = exportLogicalWidth * EXPORT_DPR;
+        canvas.height = exportLogicalHeight * EXPORT_DPR;
+        ctx.scale(EXPORT_DPR, EXPORT_DPR);
+
+        totalWeeks = exportTotalWeeks;
         isDrawingForExport = true;
+        
+        // 4. Dibujar el cronograma en el canvas de exportación
         draw(); 
 
         // 5. Convertir el canvas a Blob y copiar al portapapeles
@@ -1400,12 +1532,9 @@ async function copyChartToClipboard() {
                 return;
             }
             try {
-                await navigator.clipboard.write([
-                    new ClipboardItem({ 'image/png': blob })
-                ]);
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
                 console.log('¡Cronograma copiado como imagen!');
                 
-                // Mostrar feedback visual
                 const feedbackId = 'copy-feedback';
                 let copyFeedback = document.getElementById(feedbackId);
                 if (!copyFeedback) {
@@ -1425,25 +1554,23 @@ async function copyChartToClipboard() {
                 }
                 
                 copyFeedback.style.display = 'block';
-                setTimeout(() => {
-                    copyFeedback.style.display = 'none';
-                }, 2000);
+                setTimeout(() => { copyFeedback.style.display = 'none'; }, 2000);
 
             } catch (err) {
                 console.error('Error al copiar al portapapeles:', err);
-                alert('Error al copiar la imagen. Es posible que tu navegador no lo soporte o no tenga los permisos necesarios.');
+                alert('Error al copiar la imagen. Es posible que tu navegador no lo soporte.');
             }
         }, 'image/png');
 
     } catch (err) {
         console.error('Error al preparar el canvas para la copia:', err);
     } finally {
-        // 6. Restaurar el estado original del canvas
-        canvas.width = originalWidth;
-        canvas.height = originalHeight;
+        // 6. Restaurar el estado original del canvas para la vista normal
+        ctx.restore(); // Restaura el contexto, eliminando la escala de exportación
         totalWeeks = originalTotalWeeks;
         isDrawingForExport = false;
-        draw(); // Volver a dibujar la vista normal
+        initCanvasSize(); // Re-inicializa el canvas a las dimensiones de la pantalla
+        draw(); // Vuelve a dibujar la vista normal
     }
 }
 
