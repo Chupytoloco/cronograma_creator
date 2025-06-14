@@ -700,6 +700,10 @@ function handleCanvasMouseDown(e) {
             colorInput.click();
         } else if (icon.type === 'delete') {
             deleteProject(icon.projectIndex);
+        } else if (icon.type === 'move-up') {
+            moveProject(icon.projectIndex, -1);
+        } else if (icon.type === 'move-down') {
+            moveProject(icon.projectIndex, 1);
         }
         e.preventDefault();
         return;
@@ -1093,7 +1097,8 @@ function drawProjects() {
         projectHitboxes.push(projectHitbox);
         
         // El área de hover ahora incluye los iconos
-        const iconsWidth = (projectIconSize + projectIconPadding) * 2;
+        const numIcons = 4; // color, delete, move up, move down
+        const iconsWidth = (projectIconSize + projectIconPadding) * numIcons;
         const hoverAreaWidth = projectHitbox.width + iconsWidth;
 
         const isHovering = lastMousePosition.x >= projectHitbox.x && lastMousePosition.x <= projectHitbox.x + hoverAreaWidth &&
@@ -1348,29 +1353,53 @@ function createFloatingInput(hitbox) {
 
 function drawProjectIcons(ctx, hitbox) {
     const y = hitbox.y + (hitbox.height / 2);
+    const iconBaseX = hitbox.x + hitbox.width + projectIconPadding;
 
-    const colorIconX = hitbox.x + hitbox.width + projectIconPadding;
-    ctx.font = `${projectIconSize}px sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🎨', colorIconX, y);
+    // Icono de color
+    ctx.fillText('🎨', iconBaseX, y);
 
-    const deleteIconX = colorIconX + projectIconSize + projectIconPadding;
+    // Icono de editar (si es necesario)
+
+    // Icono de eliminar
+    const deleteIconX = iconBaseX + projectIconSize + projectIconPadding;
     ctx.fillText('🗑️', deleteIconX, y);
+
+    // Iconos para mover arriba/abajo
+    const moveUpIconX = deleteIconX + projectIconSize + projectIconPadding;
+    ctx.fillText('🔼', moveUpIconX, y);
+
+    const moveDownIconX = moveUpIconX + projectIconSize + projectIconPadding;
+    ctx.fillText('🔽', moveDownIconX, y);
 }
 
 function getIconUnderCursor(x, y) {
     let foundIcon = null;
     projectHitboxes.forEach(hitbox => {
         const iconY = hitbox.y + (hitbox.height / 2) - (projectIconSize / 2);
-        const colorIconX = hitbox.x + hitbox.width + projectIconPadding;
-        const deleteIconX = colorIconX + projectIconSize + projectIconPadding;
-
+        const iconBaseX = hitbox.x + hitbox.width + projectIconPadding;
+        
+        const colorIconX = iconBaseX;
         if (x >= colorIconX && x <= colorIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
             foundIcon = { type: 'color', projectIndex: hitbox.projectIndex };
+            return;
         }
+
+        const deleteIconX = colorIconX + projectIconSize + projectIconPadding;
         if (x >= deleteIconX && x <= deleteIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
             foundIcon = { type: 'delete', projectIndex: hitbox.projectIndex };
+            return;
+        }
+
+        const moveUpIconX = deleteIconX + projectIconSize + projectIconPadding;
+        if (x >= moveUpIconX && x <= moveUpIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
+            foundIcon = { type: 'move-up', projectIndex: hitbox.projectIndex };
+            return;
+        }
+
+        const moveDownIconX = moveUpIconX + projectIconSize + projectIconPadding;
+        if (x >= moveDownIconX && x <= moveDownIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
+            foundIcon = { type: 'move-down', projectIndex: hitbox.projectIndex };
+            return;
         }
     });
     return foundIcon;
@@ -1588,4 +1617,15 @@ function createNewSchedule() {
         // Actualizar la vista
         updatePreview();
     }
+}
+
+function moveProject(projectIndex, direction) {
+    if (direction === -1 && projectIndex > 0) {
+        // Mover hacia arriba
+        [projects[projectIndex], projects[projectIndex - 1]] = [projects[projectIndex - 1], projects[projectIndex]];
+    } else if (direction === 1 && projectIndex < projects.length - 1) {
+        // Mover hacia abajo
+        [projects[projectIndex], projects[projectIndex + 1]] = [projects[projectIndex + 1], projects[projectIndex]];
+    }
+    updatePreview();
 }
