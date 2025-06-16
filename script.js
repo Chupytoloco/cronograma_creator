@@ -55,6 +55,7 @@ window.addEventListener('load', () => {
     document.getElementById('load-input').addEventListener('change', loadSchedule);
     document.getElementById('copy-btn').addEventListener('click', copyChartToClipboard);
     document.getElementById('paste-table-btn').addEventListener('click', togglePasteArea);
+    document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
 
     // Listeners del Canvas
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
@@ -1621,11 +1622,115 @@ function createNewSchedule() {
 
 function moveProject(projectIndex, direction) {
     if (direction === -1 && projectIndex > 0) {
-        // Mover hacia arriba
+        // Mover arriba
         [projects[projectIndex], projects[projectIndex - 1]] = [projects[projectIndex - 1], projects[projectIndex]];
     } else if (direction === 1 && projectIndex < projects.length - 1) {
-        // Mover hacia abajo
+        // Mover abajo
         [projects[projectIndex], projects[projectIndex + 1]] = [projects[projectIndex + 1], projects[projectIndex]];
     }
     updatePreview();
+}
+
+function exportToExcel() {
+    const wb = XLSX.utils.book_new();
+    const ws_data = [];
+
+    const totalWeeks = calculateTotalWeeks();
+    if (totalWeeks <= 0) {
+        alert("No hay datos en el cronograma para exportar.");
+        return;
+    }
+
+    // 1. CREAR CABECERAS DE SEMANAS Y MESES
+    // Fila 0 para meses, Fila 1 para semanas
+    const monthRow = ['Proyecto', 'Tarea'];
+    const weekRow = ['', ''];
+    for (let i = 1; i <= totalWeeks; i++) {
+        weekRow.push(`S${i}`);
+        monthRow.push(''); // Relleno que se completará con los nombres de los meses
+    }
+    ws_data.push(monthRow);
+    ws_data.push(weekRow);
+
+    // 2. CALCULAR MERGES PARA LA CABECERA DE MESES
+    const merges = [];
+    const monthLabels = [];
+    let scanDate = new Date(getStartDate());
+    scanDate.setDate(scanDate.getDate() - (scanDate.getDay() === 0 ? 6 : scanDate.getDay() - 1));
+
+    for (let i = 0; i < totalWeeks; i++) {
+        const weekMonth = scanDate.getMonth();
+        if (monthLabels.length === 0 || monthLabels[monthLabels.length - 1].month !== months[weekMonth]) {
+            monthLabels.push({ month: months[weekMonth], startWeek: i }); // 0-indexed
+        }
+        scanDate.setDate(scanDate.getDate() + 7);
+    }
+    
+    monthLabels.forEach((label, index) => {
+        const startCol = label.startWeek + 2; // +2 por las columnas Proyecto y Tarea
+        const endWeek = (index + 1 < monthLabels.length) ? monthLabels[index + 1].startWeek : totalWeeks;
+        const endCol = endWeek + 1;
+        
+        ws_data[0][startCol] = label.month;
+        if (endCol > startCol) {
+            merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: endCol } });
+        }
+    });
+
+    // 3. AÑADIR FILAS DE TAREAS Y MAPEAR ESTILOS
+    const styleMap = []; // Guardará la info para colorear celdas
+    let excelRowIndex = 2; // Empezamos después de las 2 cabeceras
+
+    projects.forEach(p => {
+        p.tasksByRow.flat().forEach(task => {
+            const taskRow = Array(totalWeeks + 2).fill('');
+            taskRow[0] = p.name;
+            taskRow[1] = task.name;
+            ws_data.push(taskRow);
+            
+            // Guardamos la información para colorear la barra de esta tarea
+            styleMap.push({
+                rowIndex: excelRowIndex,
+                startWeek: task.startWeek, // 1-indexed
+                duration: task.duration,
+                color: p.color
+            });
+            excelRowIndex++;
+        });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    ws['!merges'] = merges;
+
+    // 4. APLICAR COLORES A LAS BARRAS DE TAREAS
+    styleMap.forEach(item => {
+        // La primera semana (startWeek) corresponde a la columna de la semana + 1 (por la columna Tarea)
+        const startCol = item.startWeek + 1;
+        
+        for (let w = 0; w < item.duration; w++) {
+            const colIndex = startCol + w;
+            if (colIndex < totalWeeks + 2) {
+                const cellAddress = XLSX.utils.encode_cell({ r: item.rowIndex, c: colIndex });
+                if (!ws[cellAddress]) ws[cellAddress] = { v: '' }; // Crear celda si no existe
+                ws[cellAddress].s = {
+                    fill: { fgColor: { rgb: item.color.replace('#', '') } }
+                };
+            }
+        }
+    });
+    
+    // 5. AJUSTAR ANCHO DE COLUMNAS
+    ws['!cols'] = [
+        { wch: 30 }, // Columna Proyecto
+        { wch: 40 }  // Columna Tarea
+    ];
+    for (let i = 0; i < totalWeeks; i++) {
+        ws['!cols'].push({ wch: 4 }); // Ancho para las columnas de semanas
+    }
+    
+    // 6. GENERAR Y DESCARGAR EL ARCHIVO
+    XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
+    const cronogramaTitle = document.getElementById('cronograma-title').value || 'cronograma';
+    const filename = `${cronogramaTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.xlsx`;
+    XLSX.writeFile(wb, filename);
 }
