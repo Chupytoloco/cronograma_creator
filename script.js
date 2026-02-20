@@ -7,6 +7,9 @@ let lastMousePosition = { x: 0, y: 0 }; // Rastrear la posición del ratón
 
 let tempModalTasks = []; // Almacena temporalmente las tareas del modal de proyecto
 let editingProjectId = null; // Para saber si estamos creando o editando un proyecto
+let history = [];
+let historyIndex = -1;
+const MAX_HISTORY = 50;
 
 let canvas, ctx;
 let animationProgress = 0;
@@ -47,8 +50,9 @@ window.addEventListener('load', () => {
     document.getElementById('add-project-btn').addEventListener('click', () => openProjectModal());
     document.getElementById('new-schedule-btn').addEventListener('click', createNewSchedule);
     document.getElementById('cronograma-title').addEventListener('input', updatePreview);
-    document.getElementById('start-month').addEventListener('change', updatePreview);
-    document.getElementById('end-month').addEventListener('change', updatePreview);
+    document.getElementById('cronograma-title').addEventListener('change', saveToHistory);
+    document.getElementById('start-month').addEventListener('change', () => { updatePreview(); saveToHistory(); });
+    document.getElementById('end-month').addEventListener('change', () => { updatePreview(); saveToHistory(); });
 
     // Listeners para guardar y cargar
     document.getElementById('save-btn').addEventListener('click', saveSchedule);
@@ -56,6 +60,8 @@ window.addEventListener('load', () => {
     document.getElementById('copy-btn').addEventListener('click', copyChartToClipboard);
     document.getElementById('paste-table-btn').addEventListener('click', togglePasteArea);
     document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+    document.getElementById('undo-btn').addEventListener('click', undo);
+    document.getElementById('redo-btn').addEventListener('click', redo);
 
     // Listeners del Canvas
     canvas.addEventListener('mousedown', handleCanvasMouseDown);
@@ -99,7 +105,18 @@ window.addEventListener('load', () => {
                 closeTaskModal();
             }
         }
+        if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault();
+            undo();
+        }
+        if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key === 'Z'))) {
+            e.preventDefault();
+            redo();
+        }
     });
+
+    // Guardar estado inicial
+    setTimeout(saveToHistory, 500); // Un pequeño retraso para asegurar que todo se cargó
 });
 
 function makeModalDraggable(modal) {
@@ -181,6 +198,76 @@ function populateMonthSelectors(forceReset = false) {
     }
 }
 
+// --- GESTIÓN DE HISTORIAL (UNDO/REDO) ---
+
+function saveToHistory() {
+    const currentState = JSON.stringify({
+        title: document.getElementById('cronograma-title').value,
+        startMonth: document.getElementById('start-month').value,
+        endMonth: document.getElementById('end-month').value,
+        projects: projects
+    });
+
+    // Si el estado no ha cambiado respecto al actual, no guardar
+    if (historyIndex >= 0 && history[historyIndex] === currentState) return;
+
+    // Si estamos en medio de un undo y hacemos un cambio, cortamos la rama futura
+    if (historyIndex < history.length - 1) {
+        history = history.slice(0, historyIndex + 1);
+    }
+
+    history.push(currentState);
+    if (history.length > MAX_HISTORY) {
+        history.shift();
+    } else {
+        historyIndex++;
+    }
+    updateHistoryButtons();
+}
+
+function undo() {
+    if (historyIndex > 0) {
+        historyIndex--;
+        applyState(JSON.parse(history[historyIndex]));
+    }
+}
+
+function redo() {
+    if (historyIndex < history.length - 1) {
+        historyIndex++;
+        applyState(JSON.parse(history[historyIndex]));
+    }
+}
+
+function applyState(data) {
+    if (!data) return;
+
+    if (data.title !== undefined) document.getElementById('cronograma-title').value = data.title;
+    if (data.startMonth !== undefined) document.getElementById('start-month').value = data.startMonth;
+    if (data.endMonth !== undefined) document.getElementById('end-month').value = data.endMonth;
+
+    if (data.projects && Array.isArray(data.projects)) {
+        projects.length = 0;
+        // Deep copy para evitar referencias circulares o problemas de mutación
+        Array.prototype.push.apply(projects, JSON.parse(JSON.stringify(data.projects)));
+    }
+
+    updatePreview();
+    updateHistoryButtons();
+}
+
+function updateHistoryButtons() {
+    const undoBtn = document.getElementById('undo-btn');
+    const redoBtn = document.getElementById('redo-btn');
+
+    if (undoBtn) undoBtn.disabled = historyIndex <= 0;
+    if (redoBtn) redoBtn.disabled = historyIndex >= history.length - 1;
+
+    // Estilo visual si está deshabilitado
+    if (undoBtn) undoBtn.style.opacity = historyIndex <= 0 ? '0.5' : '1';
+    if (redoBtn) redoBtn.style.opacity = historyIndex >= history.length - 1 ? '0.5' : '1';
+}
+
 
 // --- MANEJO DE PROYECTOS ---
 
@@ -210,6 +297,7 @@ function addProject(projectData) {
 
     projects.push(newProject);
     updatePreview();
+    saveToHistory();
 }
 
 function updateProjectName(index, newName) {
@@ -217,17 +305,20 @@ function updateProjectName(index, newName) {
         projects[index].name = newName.trim();
     }
     updatePreview();
+    saveToHistory();
 }
 
 function updateProjectColor(index, newColor) {
     projects[index].color = newColor;
     updatePreview();
+    saveToHistory();
 }
 
 function deleteProject(index) {
     if (confirm(`¿Estás seguro de que quieres eliminar "${projects[index].name}"?`)) {
         projects.splice(index, 1);
         updatePreview();
+        saveToHistory();
     }
 }
 
@@ -314,6 +405,7 @@ function loadSchedule(event) {
             }
 
             updatePreview();
+            saveToHistory();
 
         } catch (error) {
             alert('Error al cargar el archivo. Asegúrate de que es un archivo de cronograma válido.');
@@ -426,6 +518,7 @@ function processPastedData(text) {
     }
 
     updatePreview();
+    saveToHistory();
 }
 
 // --- MANEJO DE TAREAS ---
@@ -459,6 +552,7 @@ function addTask(projectIndex, rowIndex) {
     }
 
     updatePreview();
+    saveToHistory();
 }
 
 function deleteTask(projectIndex, rowIndex, taskIndex) {
@@ -471,6 +565,7 @@ function deleteTask(projectIndex, rowIndex, taskIndex) {
 
     closeTaskModal();
     updatePreview();
+    saveToHistory();
 }
 
 // --- MODAL DE PROYECTO ---
@@ -498,6 +593,7 @@ function openProjectModal(projectIndex = null) {
             { id: Date.now() + 4, name: "Pruebas", startWeek: 11, duration: 2, isMilestone: false },
             { id: Date.now() + 5, name: "Entrega", startWeek: 13, duration: 1, isMilestone: true }
         ];
+        saveToHistory(); // Guardar estado antes de empezar a añadir un nuevo proyecto
     }
 
     renderTemporaryTasks();
@@ -596,6 +692,8 @@ function saveProjectFromModal() {
         addProject(projectData);
     }
 
+    updatePreview();
+    saveToHistory();
     closeProjectModal();
 }
 
@@ -614,6 +712,7 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
 
     const modal = document.getElementById('task-modal');
     modal.style.display = 'flex';
+    saveToHistory(); // Guardar estado antes de editar la tarea
 
     modal.querySelector('.modal-close-icon').onclick = closeTaskModal;
 
@@ -632,6 +731,7 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
 function closeTaskModal() {
     document.getElementById('task-modal').style.display = 'none';
     editingTask = { project: -1, row: -1, task: -1 };
+    saveToHistory(); // Guardar estado al finalizar la edición
 }
 
 function updateTaskFromModal() {
@@ -751,6 +851,7 @@ function handleCanvasMouseUp(e) {
     if (resizingTask) {
         projects[resizingTask.projectIndex].tasksByRow[resizingTask.rowIndex][resizingTask.taskIndex] = ghostTask;
         updatePreview();
+        saveToHistory();
     }
 
     // --- Finalizar Arrastre ---
@@ -785,6 +886,7 @@ function handleCanvasMouseUp(e) {
                 }
             }
             updatePreview();
+            saveToHistory();
         }
     }
 
@@ -1503,6 +1605,7 @@ function addSimpleTask(projectIndex) {
     p.tasksByRow.push([newTask]);
 
     updatePreview();
+    saveToHistory();
 }
 
 // --- FUNCIONALIDAD DE COPIAR IMAGEN ---
@@ -1619,6 +1722,7 @@ function createNewSchedule() {
 
         // Actualizar la vista
         updatePreview();
+        saveToHistory();
     }
 }
 
@@ -1631,6 +1735,7 @@ function moveProject(projectIndex, direction) {
         [projects[projectIndex], projects[projectIndex + 1]] = [projects[projectIndex + 1], projects[projectIndex]];
     }
     updatePreview();
+    saveToHistory();
 }
 
 function exportToExcel() {

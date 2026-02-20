@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,13 +10,14 @@
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CQLM5S0TNV"></script>
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
 
-      gtag('config', 'G-CQLM5S0TNV');
+        gtag('config', 'G-CQLM5S0TNV');
     </script>
 </head>
+
 <body>
     <div class="main-container">
         <div class="top-bar">
@@ -24,6 +26,8 @@
                 <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma">💾</button>
                 <button id="copy-btn" class="nice-button icon-button" title="Copiar como Imagen">📋</button>
                 <button id="export-excel-btn" class="nice-button icon-button" title="Exportar a Excel">📊</button>
+                <button id="undo-btn" class="nice-button icon-button" title="Deshacer (Ctrl+Z)">↶</button>
+                <button id="redo-btn" class="nice-button icon-button" title="Rehacer (Ctrl+Y)">↷</button>
                 <input type="text" id="cronograma-title" value="Mi Cronograma" placeholder="Título del Cronograma">
             </div>
             <div class="controls">
@@ -37,11 +41,11 @@
                 </select>
             </div>
         </div>
-        
+
         <div id="canvas-container">
             <canvas id="ganttCanvas"></canvas>
         </div>
-        
+
         <div class="bottom-controls">
             <div>
                 <button id="add-project-btn" class="nice-button">Añadir Proyecto</button>
@@ -72,7 +76,7 @@
                 <div class="project-details-form">
                     <label for="project-modal-name">Nombre del Proyecto:</label>
                     <input type="text" id="project-modal-name" placeholder="Ej: Lanzamiento App">
-                    
+
                     <div class="modal-row">
                         <div>
                             <label for="project-modal-start-month">Mes de Inicio:</label>
@@ -110,7 +114,7 @@
             </div>
             <label for="modal-task-name">Tarea:</label>
             <input type="text" id="modal-task-name">
-            
+
             <div class="modal-row">
                 <div>
                     <label for="modal-start-week">Semana Inicio:</label>
@@ -156,4 +160,5 @@
         document.getElementById('main-stylesheet').href = `style.css?v=${new Date().getTime()}`;
     </script>
 </body>
+
 </html>
