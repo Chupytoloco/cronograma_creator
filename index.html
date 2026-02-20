@@ -22,23 +22,45 @@
     <div class="main-container">
         <div class="top-bar">
             <div class="title-container">
-                <button id="new-schedule-btn" class="nice-button icon-button" title="Nuevo Cronograma">📄</button>
-                <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma">💾</button>
-                <button id="copy-btn" class="nice-button icon-button" title="Copiar como Imagen">📋</button>
-                <button id="export-excel-btn" class="nice-button icon-button" title="Exportar a Excel">📊</button>
-                <button id="undo-btn" class="nice-button icon-button" title="Deshacer (Ctrl+Z)">↶</button>
-                <button id="redo-btn" class="nice-button icon-button" title="Rehacer (Ctrl+Y)">↷</button>
+                <div class="icon-btn-wrapper">
+                    <button id="new-schedule-btn" class="nice-button icon-button" title="Nuevo Cronograma">📄</button>
+                    <span class="icon-btn-label">Nuevo</span>
+                </div>
+                <div class="icon-btn-wrapper">
+                    <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma">💾</button>
+                    <span class="icon-btn-label">Guardar</span>
+                </div>
+                <div class="icon-btn-wrapper">
+                    <button id="copy-btn" class="nice-button icon-button" title="Copiar como Imagen">📋</button>
+                    <span class="icon-btn-label">Copiar</span>
+                </div>
+                <div class="icon-btn-wrapper">
+                    <button id="export-excel-btn" class="nice-button icon-button" title="Exportar a Excel">📊</button>
+                    <span class="icon-btn-label">Excel</span>
+                </div>
+                <div class="icon-btn-wrapper">
+                    <button id="undo-btn" class="nice-button icon-button" title="Deshacer (Ctrl+Z)">↶</button>
+                    <span class="icon-btn-label">Deshacer</span>
+                </div>
+                <div class="icon-btn-wrapper">
+                    <button id="redo-btn" class="nice-button icon-button" title="Rehacer (Ctrl+Y)">↷</button>
+                    <span class="icon-btn-label">Rehacer</span>
+                </div>
                 <input type="text" id="cronograma-title" value="Mi Cronograma" placeholder="Título del Cronograma">
             </div>
             <div class="controls">
-                <label for="start-month">Inicio:</label>
-                <select id="start-month">
-                    <!-- Opciones se generarán dinámicamente -->
-                </select>
-                <label for="end-month">Fin:</label>
-                <select id="end-month">
-                    <!-- Opciones se generarán dinámicamente -->
-                </select>
+                <div class="select-group">
+                    <label for="start-month">Inicio:</label>
+                    <select id="start-month">
+                        <!-- Opciones se generarán dinámicamente -->
+                    </select>
+                </div>
+                <div class="select-group">
+                    <label for="end-month">Fin:</label>
+                    <select id="end-month">
+                        <!-- Opciones se generarán dinámicamente -->
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -49,7 +71,7 @@
         <div class="bottom-controls">
             <div>
                 <button id="add-project-btn" class="nice-button">Añadir Proyecto</button>
-                <button id="paste-table-btn" class="nice-button">Pegar Tabla</button>
+                <button id="paste-table-btn" class="nice-button">Excel</button>
             </div>
             <div>
                 <label for="load-input" id="load-btn" class="nice-button">Importar</label>

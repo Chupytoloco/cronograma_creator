@@ -697,6 +697,23 @@ canvas {
     line-height: 1;
 }
 
+.icon-btn-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.icon-btn-label {
+    font-size: 0.62rem;
+    color: #999;
+    text-align: center;
+    font-family: 'Poppins', sans-serif;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    line-height: 1;
+}
+
 .button:hover,
 .nice-button:hover {
     background-color: #005a9e;
@@ -706,6 +723,23 @@ canvas {
     display: flex;
     align-items: center;
     gap: 15px;
+}
+
+.select-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.select-group label {
+    font-size: 0.7rem;
+    color: #999;
+    font-weight: 500;
+    margin: 0;
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
 .title-container input[type="text"] {
