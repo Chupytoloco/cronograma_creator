@@ -14,22 +14,24 @@
     --canvas-bg: #1e1e1e;
     --button-hover: #357ABD;
     --modal-border: #4A90E2;
+    --placeholder-color: #888;
 }
 
 body.theme-claro {
-    --bg-color: #f0f2f5;
+    --bg-color: #f5f7fa;
     --primary-color: #1a73e8;
-    --text-color: #202124;
+    --text-color: #1a1a1b;
     --panel-bg: #ffffff;
-    --border-color: #dadce0;
-    --danger-color: #d93025;
+    --border-color: #d1d5db;
+    --danger-color: #dc2626;
     --container-bg: #ffffff;
-    --input-bg: #f1f3f4;
-    --input-border: #dfe1e5;
-    --header-bg: #f8f9fa;
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;
+    --header-bg: #f8fafc;
     --canvas-bg: #ffffff;
     --button-hover: #1765cc;
     --modal-border: #1a73e8;
+    --placeholder-color: #718096;
 }
 
 body.theme-moderno {
@@ -48,7 +50,7 @@ body.theme-moderno {
     --modal-border: #38bdf8;
 }
 
-body.theme-grises {
+body.theme-gris {
     --bg-color: #f3f4f6;
     --primary-color: #374151;
     --text-color: #111827;
@@ -118,6 +120,11 @@ body {
     font-weight: bold;
 }
 
+::placeholder {
+    color: var(--placeholder-color);
+    opacity: 0.8;
+}
+
 .nice-button {
     background-color: var(--primary-color);
     color: white;
@@ -145,7 +152,7 @@ body {
     left: 20px;
     font-size: 1.5em;
     font-weight: bold;
-    color: #FFFFFF;
+    color: var(--text-color);
     z-index: 5;
     pointer-events: none;
 }
@@ -221,6 +228,7 @@ body {
 .modal-header h3 {
     margin: 0;
     font-size: 1.2em;
+    color: var(--text-color);
     pointer-events: none !important;
     /* Permite que los clics atraviesen el título */
 }
@@ -255,7 +263,7 @@ body {
 }
 
 #modal-close-btn:hover {
-    background-color: #357ABD;
+    background-color: var(--button-hover);
     color: white;
 }
 
@@ -265,21 +273,22 @@ body {
     margin-bottom: 15px;
 }
 
-.modal-body label {
+.modal-content label {
     margin-bottom: 8px;
     font-size: 0.9em;
-    color: #BBB;
+    color: var(--text-color);
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
+    display: block;
 }
 
-.modal-body input,
-.modal-body select {
+.modal-content input,
+.modal-content select {
     width: 100%;
     padding: 10px;
-    background-color: #3C3C3C;
-    border: 1px solid #555;
-    color: #E0E0E0;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-color);
     border-radius: 4px;
     box-sizing: border-box;
     font-family: 'Poppins', sans-serif;
@@ -341,7 +350,7 @@ label {
     display: block;
     margin-bottom: 5px;
     font-weight: 500;
-    color: #FFFFFF;
+    color: var(--text-color);
 }
 
 input[type="text"],
@@ -349,10 +358,10 @@ input[type="number"],
 select {
     width: 100%;
     padding: 10px;
-    background-color: #2A2A2A;
-    border: 1px solid #444;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
     border-radius: 5px;
-    color: #E0E0E0;
+    color: var(--text-color);
     font-family: 'Poppins', sans-serif;
 }
 
@@ -799,13 +808,14 @@ canvas {
 }
 
 .title-container input[type="text"] {
-    background-color: #3C3C3C;
-    border: 1px solid #555;
-    color: #F0F0F0;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text-color);
     padding: 8px;
     border-radius: 4px;
     font-size: 1rem;
-    width: 700px;
+    flex: 1;
+    min-width: 150px;
 }
 
 #project-modal-add-task-btn {
@@ -877,5 +887,72 @@ footer {
 #project-list {
     padding: 10px;
     padding-bottom: 60px;
-    /* Add padding to the bottom to avoid overlap with bottom controls */
+}
+
+/* --- RESPONSIVIDAD --- */
+@media (max-width: 1100px) {
+    .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    .title-container {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .controls {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .main-container {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .bottom-controls {
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .bottom-controls div {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .modal-content {
+        width: 95%;
+        padding: 15px;
+    }
+
+    .modal-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .modal-row>div {
+        width: 100%;
+    }
+
+    #task-modal .modal-row input,
+    #task-modal .modal-row select {
+        width: 100%;
+    }
+
+    #modal-task-name {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .icon-btn-label {
+        display: none !important;
+    }
+
+    .nice-button {
+        padding: 8px 12px;
+    }
 }

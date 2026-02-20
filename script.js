@@ -85,7 +85,11 @@ window.addEventListener('load', () => {
         updatePreview();
         saveToHistory();
     });
-    document.getElementById('end-month').addEventListener('change', () => { updatePreview(); saveToHistory(); });
+
+    document.getElementById('end-month').addEventListener('change', () => {
+        updatePreview();
+        saveToHistory();
+    });
     document.getElementById('theme-selector').addEventListener('change', (e) => {
         applyTheme(e.target.value);
         updatePreview();
@@ -286,7 +290,7 @@ function applyState(data) {
 }
 
 function applyTheme(theme) {
-    document.body.classList.remove('theme-claro', 'theme-moderno', 'theme-grises');
+    document.body.classList.remove('theme-claro', 'theme-moderno', 'theme-gris');
     if (theme !== 'oscuro') {
         document.body.classList.add(`theme-${theme}`);
     }
@@ -310,7 +314,7 @@ function applyTheme(theme) {
         canvasMutedText = '#94a3b8';
         canvasHighlightBg = 'rgba(255, 255, 255, 0.05)';
         canvasMonthOverlay = 'rgba(255, 255, 255, 0.05)';
-    } else if (theme === 'grises') {
+    } else if (theme === 'gris') {
         textColor = '#111827';
         gridColor = '#d1d5db';
         canvasHeaderBg = '#e5e7eb';
@@ -762,6 +766,9 @@ function updateTemporaryTask(e) {
 
     if (e.target.type === 'number') {
         value = parseFloat(value);
+        if (property === 'duration' && value < 0.5) value = 0.5;
+        if (property === 'startWeek' && value < 1) value = 1;
+        e.target.value = value;
     } else if (property === 'isMilestone') {
         value = value === 'true';
     }
@@ -847,11 +854,23 @@ function updateTaskFromModal() {
     const { project, row, task: taskIndex } = editingTask;
     if (project === -1) return;
 
+    let duration = parseFloat(document.getElementById('modal-duration').value) || 1;
+    if (duration < 0.5) {
+        duration = 0.5;
+        document.getElementById('modal-duration').value = 0.5;
+    }
+
+    let startWeek = parseInt(document.getElementById('modal-start-week').value) || 1;
+    if (startWeek < 1) {
+        startWeek = 1;
+        document.getElementById('modal-start-week').value = 1;
+    }
+
     const updatedTask = {
         ...projects[project].tasksByRow[row][taskIndex], // Mantener propiedades existentes como 'color' si no se cambia
         name: document.getElementById('modal-task-name').value.trim() || 'Tarea sin nombre',
-        startWeek: parseInt(document.getElementById('modal-start-week').value) || 1,
-        duration: parseFloat(document.getElementById('modal-duration').value) || 1,
+        startWeek: startWeek,
+        duration: duration,
         isMilestone: document.getElementById('modal-task-type').value === 'milestone',
         textPosition: document.getElementById('modal-text-position').value,
         color: document.getElementById('modal-task-color').value
@@ -1485,13 +1504,19 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
         ctx.font = taskFont;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        const text = task.name;
+        let text = task.name;
         const textMetrics = ctx.measureText(text);
         const textY = y;
 
         if (task.isMilestone) {
             ctx.fillStyle = textColor;
-            ctx.fillText(text, startX + 25, textY);
+            // Truncar si el texto es muy largo y choca con el borde del canvas
+            let milestoneText = text;
+            const maxMilestoneTextWidth = logicalCanvasWidth - (startX + 35);
+            if (textMetrics.width > maxMilestoneTextWidth) {
+                milestoneText = truncateText(ctx, text, maxMilestoneTextWidth);
+            }
+            ctx.fillText(milestoneText, startX + 25, textY);
             ctx.restore();
             return;
         }
@@ -1507,16 +1532,34 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
                 ctx.fillText(text, startX + 15, textY);
                 ctx.restore();
             }
+        } else if (task.textPosition === 'inside') {
+            // Si el texto debería ir dentro pero no cabe, truncarlo
+            if (barWidth > 40) {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(startX, barY, barWidth, barHeight);
+                ctx.clip();
+                const truncatedInsideText = truncateText(ctx, text, barWidth - 20);
+                ctx.fillText(truncatedInsideText, startX + 10, textY);
+                ctx.restore();
+            }
         } else {
             if (animationProgress > 0.95) {
                 ctx.fillStyle = textColor;
                 const textX = startX + fullBarWidth + 10;
                 if (textX + textMetrics.width > logicalCanvasWidth) {
                     ctx.textAlign = 'right';
-                    ctx.fillText(text, startX - 10, textY);
+                    // Límite de 150px o espacio hasta el borde izquierdo del chart
+                    const maxLeftTextWidth = Math.min(150, startX - projectLabelWidth - 20);
+                    const finalLeftText = (textMetrics.width > maxLeftTextWidth) ? truncateText(ctx, text, maxLeftTextWidth) : text;
+                    ctx.fillText(finalLeftText, startX - 10, textY);
                 } else {
                     ctx.textAlign = 'left';
-                    ctx.fillText(text, textX, textY);
+                    // Límite de 200px o espacio hasta el borde derecho del canvas
+                    const maxRightTextWidth = Math.min(200, logicalCanvasWidth - textX - 10);
+                    const finalRightText = (textMetrics.width > maxRightTextWidth) ? truncateText(ctx, text, maxRightTextWidth) : text;
+                    ctx.fillText(finalRightText, textX, textY);
                 }
             }
         }
@@ -1689,6 +1732,20 @@ function getIconUnderCursor(x, y) {
         }
     });
     return foundIcon;
+}
+
+// --- UTILIDADES ---
+function truncateText(ctx, text, maxWidth) {
+    if (maxWidth < 10) return "";
+    let width = ctx.measureText(text).width;
+    if (width <= maxWidth) return text;
+
+    let truncated = text;
+    while (width > maxWidth && truncated.length > 0) {
+        truncated = truncated.slice(0, -1);
+        width = ctx.measureText(truncated + "...").width;
+    }
+    return truncated + "...";
 }
 
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
