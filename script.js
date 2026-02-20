@@ -31,8 +31,15 @@ let totalWeeks = 26; // Se calcula dinámicamente
 const rowHeight = 35;
 const headerHeight = 70;
 const projectLabelWidth = 200;
-const gridColor = '#444';
-const textColor = '#E0E0E0';
+let gridColor = '#444';
+let textColor = '#E0E0E0';
+let canvasHeaderBg = '#252526';
+let canvasBodyBg = '#1E1E1E';
+let canvasSidebarBg = '#252526';
+let canvasMutedText = '#999';
+let canvasHighlightBg = 'rgba(255, 255, 255, 0.08)';
+let canvasMonthOverlay = 'rgba(255, 255, 255, 0.05)';
+let currentTheme = 'oscuro';
 const gridFont = "12px Poppins";
 const projectFont = "bold 16px Poppins";
 const taskFont = "14px Poppins";
@@ -79,6 +86,11 @@ window.addEventListener('load', () => {
         saveToHistory();
     });
     document.getElementById('end-month').addEventListener('change', () => { updatePreview(); saveToHistory(); });
+    document.getElementById('theme-selector').addEventListener('change', (e) => {
+        applyTheme(e.target.value);
+        updatePreview();
+        saveToHistory();
+    });
 
     // Listeners para guardar y cargar
     document.getElementById('save-btn').addEventListener('click', saveSchedule);
@@ -217,6 +229,7 @@ function saveToHistory() {
         title: document.getElementById('cronograma-title').value,
         startMonth: document.getElementById('start-month').value,
         endMonth: document.getElementById('end-month').value,
+        theme: document.getElementById('theme-selector').value,
         projects: projects
     });
 
@@ -257,6 +270,10 @@ function applyState(data) {
     if (data.title !== undefined) document.getElementById('cronograma-title').value = data.title;
     if (data.startMonth !== undefined) document.getElementById('start-month').value = data.startMonth;
     if (data.endMonth !== undefined) document.getElementById('end-month').value = data.endMonth;
+    if (data.theme !== undefined) {
+        document.getElementById('theme-selector').value = data.theme;
+        applyTheme(data.theme);
+    }
 
     if (data.projects && Array.isArray(data.projects)) {
         projects.length = 0;
@@ -267,6 +284,54 @@ function applyState(data) {
     updatePreview();
     updateHistoryButtons();
 }
+
+function applyTheme(theme) {
+    document.body.classList.remove('theme-claro', 'theme-moderno', 'theme-grises');
+    if (theme !== 'oscuro') {
+        document.body.classList.add(`theme-${theme}`);
+    }
+
+    // Actualizar colores para el Canvas
+    if (theme === 'claro') {
+        textColor = '#333333';
+        gridColor = '#dddddd';
+        canvasHeaderBg = '#f1f3f4';
+        canvasBodyBg = '#ffffff';
+        canvasSidebarBg = '#f8f9fa';
+        canvasMutedText = '#666';
+        canvasHighlightBg = 'rgba(0, 0, 0, 0.05)';
+        canvasMonthOverlay = 'rgba(0, 0, 0, 0.02)';
+    } else if (theme === 'moderno') {
+        textColor = '#f1f5f9';
+        gridColor = '#334155';
+        canvasHeaderBg = '#1e293b';
+        canvasBodyBg = '#0f172a';
+        canvasSidebarBg = '#1e293b';
+        canvasMutedText = '#94a3b8';
+        canvasHighlightBg = 'rgba(255, 255, 255, 0.05)';
+        canvasMonthOverlay = 'rgba(255, 255, 255, 0.05)';
+    } else if (theme === 'grises') {
+        textColor = '#111827';
+        gridColor = '#d1d5db';
+        canvasHeaderBg = '#e5e7eb';
+        canvasBodyBg = '#f9fafb';
+        canvasSidebarBg = '#f3f4f6';
+        canvasMutedText = '#4b5563';
+        canvasHighlightBg = 'rgba(0, 0, 0, 0.05)';
+        canvasMonthOverlay = 'rgba(0, 0, 0, 0.03)';
+    } else {
+        // Oscuro (Default)
+        textColor = '#E0E0E0';
+        gridColor = '#444';
+        canvasHeaderBg = '#252526';
+        canvasBodyBg = '#1E1E1E';
+        canvasSidebarBg = '#252526';
+        canvasMutedText = '#999';
+        canvasHighlightBg = 'rgba(255, 255, 255, 0.08)';
+        canvasMonthOverlay = 'rgba(255, 255, 255, 0.05)';
+    }
+}
+
 
 function updateHistoryButtons() {
     const undoBtn = document.getElementById('undo-btn');
@@ -342,6 +407,7 @@ function saveStateToLocalStorage() {
             title: document.getElementById('cronograma-title').value,
             startMonth: document.getElementById('start-month').value,
             endMonth: document.getElementById('end-month').value,
+            theme: document.getElementById('theme-selector').value,
             projects: projects
         };
         localStorage.setItem('ganttChartState', JSON.stringify(state));
@@ -359,6 +425,10 @@ function loadStateFromLocalStorage() {
             if (data.title) document.getElementById('cronograma-title').value = data.title;
             if (data.startMonth) document.getElementById('start-month').value = data.startMonth;
             if (data.endMonth) document.getElementById('end-month').value = data.endMonth;
+            if (data.theme) {
+                document.getElementById('theme-selector').value = data.theme;
+                applyTheme(data.theme);
+            }
 
             if (data.projects && Array.isArray(data.projects)) {
                 projects.length = 0;
@@ -376,6 +446,7 @@ function saveSchedule() {
         title: document.getElementById('cronograma-title').value,
         startMonth: document.getElementById('start-month').value,
         endMonth: document.getElementById('end-month').value,
+        theme: document.getElementById('theme-selector').value,
         projects: projects
     };
 
@@ -1161,9 +1232,14 @@ function draw() {
     const dpr = window.devicePixelRatio || 1;
     ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 
-    // Dibujar el fondo principal
-    ctx.fillStyle = '#252526';
+    // Dibujar el fondo principal (área del gráfico)
+    ctx.fillStyle = canvasBodyBg;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Dibujar el fondo de la columna de proyectos (sidebar)
+    ctx.fillStyle = canvasSidebarBg;
+    const dprVal = window.devicePixelRatio || 1;
+    ctx.fillRect(0, 0, projectLabelWidth, canvas.height / dprVal);
 
     drawGrid();
     drawProjects();
@@ -1174,7 +1250,7 @@ function draw() {
 }
 
 function drawGrid() {
-    ctx.fillStyle = '#1E1E1E';
+    ctx.fillStyle = canvasHeaderBg;
     ctx.fillRect(0, 0, canvas.width, headerHeight);
 
     const dpr = ctx.getTransform().a || 1;
@@ -1192,7 +1268,7 @@ function drawGrid() {
         const currentMonth = weekDate.getMonth();
         if (currentMonth !== lastMonth) {
             if (lastMonth !== -1) {
-                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                ctx.fillStyle = canvasMonthOverlay;
                 ctx.fillRect(monthStartX, 0, weeksInCurrentMonth * weekWidth, headerHeight);
                 ctx.fillStyle = textColor;
                 ctx.font = "bold 14px Poppins";
@@ -1215,14 +1291,14 @@ function drawGrid() {
         ctx.lineTo(x, canvas.height / (window.devicePixelRatio || 1));
         ctx.stroke();
 
-        ctx.fillStyle = '#999';
+        ctx.fillStyle = canvasMutedText;
         ctx.font = gridFont;
         ctx.textAlign = 'center';
         ctx.fillText(`S${i + 1}`, x + weekWidth / 2, headerHeight / 2 + 15);
     }
 
     if (lastMonth !== -1) {
-        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillStyle = canvasMonthOverlay;
         ctx.fillRect(monthStartX, 0, weeksInCurrentMonth * weekWidth, headerHeight);
         ctx.fillStyle = textColor;
         ctx.font = "bold 14px Poppins";
@@ -1314,8 +1390,9 @@ function drawProjects() {
         if (!isDrawingForExport) {
             const buttonY = y + 10;
             const buttonHeight = 25;
-            ctx.fillStyle = '#3a3a3a';
-            ctx.strokeStyle = '#555';
+
+            ctx.fillStyle = canvasHeaderBg;
+            ctx.strokeStyle = gridColor;
             ctx.lineWidth = 1;
             roundRect(ctx, projectLabelWidth, buttonY, 120, buttonHeight, 5, true, true);
 
@@ -1450,10 +1527,10 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
 
 function drawPlaceholder(y) {
     ctx.save();
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
     const dpr = window.devicePixelRatio || 1;
+    ctx.fillStyle = canvasHighlightBg;
     ctx.fillRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.strokeStyle = textColor;
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
     ctx.strokeRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);

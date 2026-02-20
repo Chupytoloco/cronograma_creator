@@ -1,18 +1,73 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
 
 :root {
-    --bg-color: #1a1a1a;
+    --bg-color: #1e1e1e;
     --primary-color: #4A90E2;
     --text-color: #E0E0E0;
     --panel-bg: #252526;
-    --border-color: #333;
+    --border-color: #444;
     --danger-color: #e74c3c;
+    --container-bg: #2D2D2D;
+    --input-bg: #3C3C3C;
+    --input-border: #555;
+    --header-bg: #252526;
+    --canvas-bg: #1e1e1e;
+    --button-hover: #357ABD;
+    --modal-border: #4A90E2;
+}
+
+body.theme-claro {
+    --bg-color: #f0f2f5;
+    --primary-color: #1a73e8;
+    --text-color: #202124;
+    --panel-bg: #ffffff;
+    --border-color: #dadce0;
+    --danger-color: #d93025;
+    --container-bg: #ffffff;
+    --input-bg: #f1f3f4;
+    --input-border: #dfe1e5;
+    --header-bg: #f8f9fa;
+    --canvas-bg: #ffffff;
+    --button-hover: #1765cc;
+    --modal-border: #1a73e8;
+}
+
+body.theme-moderno {
+    --bg-color: #0f172a;
+    --primary-color: #38bdf8;
+    --text-color: #f1f5f9;
+    --panel-bg: #1e293b;
+    --border-color: #334155;
+    --danger-color: #ef4444;
+    --container-bg: #1e293b;
+    --input-bg: #334155;
+    --input-border: #475569;
+    --header-bg: #0f172a;
+    --canvas-bg: #0f172a;
+    --button-hover: #0ea5e9;
+    --modal-border: #38bdf8;
+}
+
+body.theme-grises {
+    --bg-color: #f3f4f6;
+    --primary-color: #374151;
+    --text-color: #111827;
+    --panel-bg: #ffffff;
+    --border-color: #d1d5db;
+    --danger-color: #ef4444;
+    --container-bg: #ffffff;
+    --input-bg: #f9fafb;
+    --input-border: #d1d5db;
+    --header-bg: #e5e7eb;
+    --canvas-bg: #ffffff;
+    --button-hover: #1f2937;
+    --modal-border: #374151;
 }
 
 body {
     font-family: 'Poppins', sans-serif;
-    background-color: #1E1E1E;
-    color: #E0E0E0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     margin: 0;
     padding: 0;
     display: flex;
@@ -24,11 +79,11 @@ body {
 .main-container {
     width: 95%;
     max-width: 1600px;
-    background-color: #2D2D2D;
+    background-color: var(--container-bg);
     border-radius: 8px;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     overflow: hidden;
-    color: #ff6b6b;
+    color: var(--text-color);
 }
 
 .top-bar {
@@ -36,8 +91,8 @@ body {
     justify-content: space-between;
     align-items: center;
     padding: 15px 20px;
-    background-color: #252526;
-    border-bottom: 1px solid #444;
+    background-color: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
 }
 
 .title-container {
@@ -48,10 +103,11 @@ body {
 
 #cronograma-title,
 #start-month,
-#end-month {
-    background-color: #3C3C3C;
-    color: #E0E0E0;
-    border: 1px solid #555;
+#end-month,
+#theme-selector {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     padding: 8px;
     font-family: 'Poppins', sans-serif;
@@ -63,7 +119,7 @@ body {
 }
 
 .nice-button {
-    background-color: #4A90E2;
+    background-color: var(--primary-color);
     color: white;
     border: none;
     padding: 10px 18px;
@@ -75,12 +131,12 @@ body {
 }
 
 .nice-button:hover {
-    background-color: #357ABD;
+    background-color: var(--button-hover);
 }
 
 #canvas-container {
     position: relative;
-    background-color: #252526;
+    background-color: var(--canvas-bg);
 }
 
 #project-title-render {
@@ -97,13 +153,13 @@ body {
 
 #ganttCanvas {
     width: 100%;
-    background-color: #252526;
+    background-color: var(--canvas-bg);
 }
 
 .bottom-controls {
     padding: 15px 20px;
-    background-color: #252526;
-    border-top: 1px solid #333;
+    background-color: var(--header-bg);
+    border-top: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -140,13 +196,13 @@ body {
 }
 
 .modal-content {
-    background-color: #2D2D2D;
+    background-color: var(--container-bg);
     padding: 25px;
     border-radius: 8px;
     box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
     width: fit-content;
     max-width: 90%;
-    border-top: 3px solid #4A90E2;
+    border-top: 3px solid var(--modal-border);
 }
 
 .modal-header {
