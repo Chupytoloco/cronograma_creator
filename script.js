@@ -12,6 +12,7 @@ let historyIndex = -1;
 const MAX_HISTORY = 50;
 
 let canvas, ctx;
+let lastStartMonth = null; // Para detectar el cambio en el mes de inicio
 let animationProgress = 0;
 let lastTime = 0;
 const animationDuration = 800;
@@ -51,7 +52,32 @@ window.addEventListener('load', () => {
     document.getElementById('new-schedule-btn').addEventListener('click', createNewSchedule);
     document.getElementById('cronograma-title').addEventListener('input', updatePreview);
     document.getElementById('cronograma-title').addEventListener('change', saveToHistory);
-    document.getElementById('start-month').addEventListener('change', () => { updatePreview(); saveToHistory(); });
+    lastStartMonth = parseInt(document.getElementById('start-month').value);
+    document.getElementById('start-month').addEventListener('change', () => {
+        const newStartMonth = parseInt(document.getElementById('start-month').value);
+        if (lastStartMonth !== null && lastStartMonth !== newStartMonth) {
+            // Calcular cuántas semanas se desplazó el grid entre el mes anterior y el nuevo
+            const year = new Date().getFullYear();
+            const oldStart = new Date(year, lastStartMonth, 1);
+            while (oldStart.getDay() !== 1) oldStart.setDate(oldStart.getDate() + 1);
+            const newStart = new Date(year, newStartMonth, 1);
+            while (newStart.getDay() !== 1) newStart.setDate(newStart.getDate() + 1);
+            const diffMs = newStart.getTime() - oldStart.getTime();
+            const weeksDiff = Math.round(diffMs / (1000 * 60 * 60 * 24 * 7));
+
+            // Compensar todas las tareas: restar el desplazamiento para que queden en el mismo sitio
+            projects.forEach(project => {
+                project.tasksByRow.forEach(row => {
+                    row.forEach(task => {
+                        task.startWeek -= weeksDiff;
+                    });
+                });
+            });
+        }
+        lastStartMonth = newStartMonth;
+        updatePreview();
+        saveToHistory();
+    });
     document.getElementById('end-month').addEventListener('change', () => { updatePreview(); saveToHistory(); });
 
     // Listeners para guardar y cargar
@@ -1289,7 +1315,11 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
     const fullBarWidth = task.duration * weekWidth;
     let barWidth = fullBarWidth * animationProgress;
 
-    const hitbox = { x: startX, y: barY, width: fullBarWidth, height: barHeight, projectIndex, rowIndex, taskIndex };
+    // Si la barra está completamente fuera del rango visible del grid, no dibujar
+    const taskEndX = startX + fullBarWidth;
+    if (taskEndX < projectLabelWidth || startX > projectLabelWidth + chartWidth) return;
+
+    const hitbox = { x: Math.max(startX, projectLabelWidth), y: barY, width: fullBarWidth, height: barHeight, projectIndex, rowIndex, taskIndex };
 
     if (task.isMilestone) {
         const diamondSize = 20;
@@ -1301,6 +1331,12 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
 
     const isDragging = draggingTask && draggingTask.projectIndex === projectIndex && draggingTask.rowIndex === rowIndex && draggingTask.taskIndex === taskIndex;
     const isResizing = resizingTask && resizingTask.projectIndex === projectIndex && resizingTask.rowIndex === rowIndex && resizingTask.taskIndex === taskIndex;
+
+    // Aplicar clipping al área del gráfico para que las barras nunca invadan la zona de etiquetas
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(projectLabelWidth, headerHeight, chartWidth, canvas.height / dpr - headerHeight);
+    ctx.clip();
 
     ctx.fillStyle = task.color || project.color;
     if (isDragging) ctx.globalAlpha = 0.6;
@@ -1340,6 +1376,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
         if (task.isMilestone) {
             ctx.fillStyle = textColor;
             ctx.fillText(text, startX + 25, textY);
+            ctx.restore();
             return;
         }
 
@@ -1358,7 +1395,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
             if (animationProgress > 0.95) {
                 ctx.fillStyle = textColor;
                 const textX = startX + fullBarWidth + 10;
-                if (textX + textMetrics.width > canvas.width / (window.devicePixelRatio || 1)) {
+                if (textX + textMetrics.width > logicalCanvasWidth) {
                     ctx.textAlign = 'right';
                     ctx.fillText(text, startX - 10, textY);
                 } else {
@@ -1368,6 +1405,8 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
             }
         }
     }
+
+    ctx.restore(); // Restaurar el clipping del área del gráfico
 }
 
 function drawPlaceholder(y) {
