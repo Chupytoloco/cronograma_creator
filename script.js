@@ -901,39 +901,44 @@ function handleCanvasMouseUp(e) {
             const project = projects[projectIndex];
 
             if (project && project.tasksByRow[rowIndex] && project.tasksByRow[rowIndex][taskIndex]) {
-                const task = { ...project.tasksByRow[rowIndex][taskIndex] };
-                const sourceIsOnlyTaskInRow = project.tasksByRow[rowIndex].length === 1;
-
-                // Eliminar la tarea de su posición original
-                project.tasksByRow[rowIndex].splice(taskIndex, 1);
-                if (project.tasksByRow[rowIndex].length === 0) {
-                    project.tasksByRow.splice(rowIndex, 1);
-                }
-
-                if (!dropTarget) {
-                    // Sin destino → nueva fila al final
-                    project.tasksByRow.push([task]);
-                } else if (dropTarget.merge) {
-                    // Fusionar con la fila existente
-                    let mergeIndex = dropTarget.rowIndex;
-                    // Ajustar índice si la fila original se elimina antes de la fila destino
-                    if (sourceIsOnlyTaskInRow && mergeIndex > rowIndex) {
-                        mergeIndex--;
-                    }
-                    mergeIndex = Math.max(0, Math.min(mergeIndex, project.tasksByRow.length - 1));
-                    project.tasksByRow[mergeIndex].push(task);
+                // sameRow: solo cambió startWeek (ya actualizado en vivo), no reorganizar filas
+                if (dropTarget && dropTarget.sameRow) {
+                    // Nada que reorganizar, la tarea ya está en su sitio
                 } else {
-                    // Insertar nueva fila
-                    let insertIndex = dropTarget.rowIndex;
+                    const task = { ...project.tasksByRow[rowIndex][taskIndex] };
+                    const sourceIsOnlyTaskInRow = project.tasksByRow[rowIndex].length === 1;
 
-                    if (sourceIsOnlyTaskInRow) {
-                        if (insertIndex > rowIndex) {
-                            insertIndex--;
-                        }
+                    // Eliminar la tarea de su posición original
+                    project.tasksByRow[rowIndex].splice(taskIndex, 1);
+                    if (project.tasksByRow[rowIndex].length === 0) {
+                        project.tasksByRow.splice(rowIndex, 1);
                     }
 
-                    insertIndex = Math.max(0, Math.min(insertIndex, project.tasksByRow.length));
-                    project.tasksByRow.splice(insertIndex, 0, [task]);
+                    if (!dropTarget) {
+                        // Sin destino → nueva fila al final
+                        project.tasksByRow.push([task]);
+                    } else if (dropTarget.merge) {
+                        // Fusionar con la fila existente
+                        let mergeIndex = dropTarget.rowIndex;
+                        // Ajustar índice si la fila original se elimina antes de la fila destino
+                        if (sourceIsOnlyTaskInRow && mergeIndex > rowIndex) {
+                            mergeIndex--;
+                        }
+                        mergeIndex = Math.max(0, Math.min(mergeIndex, project.tasksByRow.length - 1));
+                        project.tasksByRow[mergeIndex].push(task);
+                    } else {
+                        // Insertar nueva fila
+                        let insertIndex = dropTarget.rowIndex;
+
+                        if (sourceIsOnlyTaskInRow) {
+                            if (insertIndex > rowIndex) {
+                                insertIndex--;
+                            }
+                        }
+
+                        insertIndex = Math.max(0, Math.min(insertIndex, project.tasksByRow.length));
+                        project.tasksByRow.splice(insertIndex, 0, [task]);
+                    }
                 }
             }
             updatePreview();
@@ -1117,24 +1122,30 @@ function handleCanvasMouseMove(e) {
                 const clampedRow = Math.max(0, Math.min(hoveredRow, numRows - 1));
 
                 if (hoveredRow >= 0 && hoveredRow < numRows) {
-                    // Posición relativa dentro de la fila [0..1]
-                    const posInRow = (relY - hoveredRow * rowHeight) / rowHeight;
-                    const mergeMin = (1 - mergeZoneFraction) / 2;
-                    const mergeMax = 1 - mergeMin;
-
-                    if (posInRow >= mergeMin && posInRow <= mergeMax) {
-                        // Zona central → merge con la fila existente
-                        newDropTarget = { projectIndex, rowIndex: clampedRow, merge: true };
+                    // Si el cursor está en la misma fila de origen → sameRow (solo cambia startWeek)
+                    if (hoveredRow === rowIndex) {
+                        newDropTarget = { projectIndex, rowIndex: hoveredRow, sameRow: true };
                     } else {
-                        // Zona de borde → insertar nueva fila
-                        const insertBefore = posInRow < mergeMin;
-                        newDropTarget = { projectIndex, rowIndex: insertBefore ? hoveredRow : hoveredRow + 1, merge: false };
+                        // Posición relativa dentro de la fila [0..1]
+                        const posInRow = (relY - hoveredRow * rowHeight) / rowHeight;
+                        const mergeMin = (1 - mergeZoneFraction) / 2;
+                        const mergeMax = 1 - mergeMin;
+
+                        if (posInRow >= mergeMin && posInRow <= mergeMax) {
+                            // Zona central → merge con la fila existente
+                            newDropTarget = { projectIndex, rowIndex: clampedRow, merge: true };
+                        } else {
+                            // Zona de borde → insertar nueva fila
+                            const insertBefore = posInRow < mergeMin;
+                            newDropTarget = { projectIndex, rowIndex: insertBefore ? hoveredRow : hoveredRow + 1, merge: false };
+                        }
                     }
                 } else {
                     // Por encima o por debajo de todas las filas
                     const insertSlot = hoveredRow < 0 ? 0 : numRows;
                     newDropTarget = { projectIndex, rowIndex: insertSlot, merge: false };
                 }
+
             }
 
             draggingTask.dropTarget = newDropTarget;
