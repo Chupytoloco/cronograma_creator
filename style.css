@@ -101,6 +101,8 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex: 1;
+    margin-right: 20px;
 }
 
 #cronograma-title,
@@ -118,6 +120,7 @@ body {
 #cronograma-title {
     font-size: 1.1em;
     font-weight: bold;
+    flex-grow: 1;
 }
 
 ::placeholder {

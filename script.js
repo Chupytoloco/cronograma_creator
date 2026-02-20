@@ -57,7 +57,7 @@ window.addEventListener('load', () => {
 
     document.getElementById('add-project-btn').addEventListener('click', addDefaultProject);
     document.getElementById('new-schedule-btn').addEventListener('click', createNewSchedule);
-    document.getElementById('cronograma-title').addEventListener('input', updatePreview);
+    document.getElementById('cronograma-title').addEventListener('input', saveStateToLocalStorage);
     document.getElementById('cronograma-title').addEventListener('change', saveToHistory);
     lastStartMonth = parseInt(document.getElementById('start-month').value);
     document.getElementById('start-month').addEventListener('change', () => {
