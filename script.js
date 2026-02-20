@@ -911,8 +911,19 @@ function handleCanvasMouseUp(e) {
                 }
 
                 if (!dropTarget) {
+                    // Sin destino → nueva fila al final
                     project.tasksByRow.push([task]);
+                } else if (dropTarget.merge) {
+                    // Fusionar con la fila existente
+                    let mergeIndex = dropTarget.rowIndex;
+                    // Ajustar índice si la fila original se elimina antes de la fila destino
+                    if (sourceIsOnlyTaskInRow && mergeIndex > rowIndex) {
+                        mergeIndex--;
+                    }
+                    mergeIndex = Math.max(0, Math.min(mergeIndex, project.tasksByRow.length - 1));
+                    project.tasksByRow[mergeIndex].push(task);
                 } else {
+                    // Insertar nueva fila
                     let insertIndex = dropTarget.rowIndex;
 
                     if (sourceIsOnlyTaskInRow) {
@@ -1091,31 +1102,42 @@ function handleCanvasMouseMove(e) {
 
             const numRows = projects[projectIndex].tasksByRow.length;
 
-            // Encontrar el slot más cercano al cursor iterando por los bordes
-            // de las filas. Cada slot "i" representa insertar ANTES de la fila i
-            // (o después de la última si i === numRows).
-            // Usamos los puntos medios entre filas como umbrales.
-            let bestSlot = 0;
-            let slotY = projectTopY; // Y del borde superior de cada fila/slot
-
-            for (let i = 0; i <= numRows; i++) {
-                // El centro de la transición entre slot i-1 y slot i está en slotY
-                if (y < slotY) {
-                    break;
-                }
-                bestSlot = i;
-                if (i < numRows) {
-                    slotY += rowHeight;
-                }
-            }
-            bestSlot = Math.max(0, Math.min(bestSlot, numRows));
-
+            // Determinar el destino de drop:
+            // - Si el cursor cae en el tercio central de una fila existente → fusionar (merge)
+            // - Si cae en el tercio superior/inferior (entre filas) → insertar nueva fila
             const projectBottomY = projectTopY + numRows * rowHeight;
+            const mergeZoneFraction = 0.34; // 34% central de cada fila activa el merge
+
+            let newDropTarget = null;
+
             if (y > projectTopY - rowHeight / 2 && y < projectBottomY + rowHeight / 2) {
-                draggingTask.dropTarget = { projectIndex, rowIndex: bestSlot };
-            } else {
-                draggingTask.dropTarget = null;
+                // Identificar en qué fila estamos
+                const relY = y - projectTopY;
+                const hoveredRow = Math.floor(relY / rowHeight);
+                const clampedRow = Math.max(0, Math.min(hoveredRow, numRows - 1));
+
+                if (hoveredRow >= 0 && hoveredRow < numRows) {
+                    // Posición relativa dentro de la fila [0..1]
+                    const posInRow = (relY - hoveredRow * rowHeight) / rowHeight;
+                    const mergeMin = (1 - mergeZoneFraction) / 2;
+                    const mergeMax = 1 - mergeMin;
+
+                    if (posInRow >= mergeMin && posInRow <= mergeMax) {
+                        // Zona central → merge con la fila existente
+                        newDropTarget = { projectIndex, rowIndex: clampedRow, merge: true };
+                    } else {
+                        // Zona de borde → insertar nueva fila
+                        const insertBefore = posInRow < mergeMin;
+                        newDropTarget = { projectIndex, rowIndex: insertBefore ? hoveredRow : hoveredRow + 1, merge: false };
+                    }
+                } else {
+                    // Por encima o por debajo de todas las filas
+                    const insertSlot = hoveredRow < 0 ? 0 : numRows;
+                    newDropTarget = { projectIndex, rowIndex: insertSlot, merge: false };
+                }
             }
+
+            draggingTask.dropTarget = newDropTarget;
 
             draw();
         }
@@ -1255,15 +1277,21 @@ function drawProjects() {
 
         const isDropTargetProject = draggingTask && draggingTask.didMove && draggingTask.dropTarget?.projectIndex === projectIndex;
         const dropRowIndex = isDropTargetProject ? draggingTask.dropTarget.rowIndex : -1;
+        const isMerge = isDropTargetProject && draggingTask.dropTarget?.merge;
 
         const numRows = project.tasksByRow.length;
         for (let i = 0; i <= numRows; i++) {
-            if (isDropTargetProject && i === dropRowIndex) {
+            // Placeholder de inserción (nueva fila) — solo cuando NO es merge
+            if (isDropTargetProject && !isMerge && i === dropRowIndex) {
                 drawPlaceholder(y);
                 y += rowHeight;
             }
 
             if (i < numRows) {
+                // Highlight de merge — resaltar la fila destino
+                if (isDropTargetProject && isMerge && i === dropRowIndex) {
+                    drawMergeHighlight(y);
+                }
                 project.tasksByRow[i].forEach((task, taskIndex) => {
                     drawTaskBar(task, project, y + rowHeight / 2, projectIndex, i, taskIndex);
                 });
@@ -1417,6 +1445,18 @@ function drawPlaceholder(y) {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.setLineDash([4, 4]);
     ctx.lineWidth = 1;
+    ctx.strokeRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
+    ctx.restore();
+}
+
+function drawMergeHighlight(y) {
+    ctx.save();
+    const dpr = window.devicePixelRatio || 1;
+    ctx.fillStyle = 'rgba(100, 200, 255, 0.12)';
+    ctx.fillRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
+    ctx.strokeStyle = 'rgba(100, 200, 255, 0.7)';
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1.5;
     ctx.strokeRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
     ctx.restore();
 }
