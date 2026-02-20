@@ -709,6 +709,7 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
     document.getElementById('modal-duration').value = task.duration;
     document.getElementById('modal-task-type').value = task.isMilestone ? 'milestone' : 'normal';
     document.getElementById('modal-text-position').value = task.textPosition;
+    document.getElementById('modal-task-color').value = task.color || projects[projectIndex].color;
 
     const modal = document.getElementById('task-modal');
     modal.style.display = 'flex';
@@ -722,7 +723,15 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
         }
     };
 
-    const modalInputs = ['modal-task-name', 'modal-start-week', 'modal-duration', 'modal-task-type', 'modal-text-position'];
+    document.getElementById('modal-reset-color-btn').onclick = () => {
+        const taskColorInput = document.getElementById('modal-task-color');
+        taskColorInput.value = projects[projectIndex].color;
+        // Al resetear, eliminamos la propiedad color para que siga al proyecto
+        delete projects[projectIndex].tasksByRow[rowIndex][taskIndex].color;
+        updatePreview();
+    };
+
+    const modalInputs = ['modal-task-name', 'modal-start-week', 'modal-duration', 'modal-task-type', 'modal-text-position', 'modal-task-color'];
     modalInputs.forEach(id => {
         document.getElementById(id).oninput = updateTaskFromModal;
     });
@@ -739,11 +748,13 @@ function updateTaskFromModal() {
     if (project === -1) return;
 
     const updatedTask = {
+        ...projects[project].tasksByRow[row][taskIndex], // Mantener propiedades existentes como 'color' si no se cambia
         name: document.getElementById('modal-task-name').value.trim() || 'Tarea sin nombre',
         startWeek: parseInt(document.getElementById('modal-start-week').value) || 1,
         duration: parseFloat(document.getElementById('modal-duration').value) || 1,
         isMilestone: document.getElementById('modal-task-type').value === 'milestone',
-        textPosition: document.getElementById('modal-text-position').value
+        textPosition: document.getElementById('modal-text-position').value,
+        color: document.getElementById('modal-task-color').value
     };
 
     projects[project].tasksByRow[row][taskIndex] = updatedTask;
@@ -1288,7 +1299,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
     const isDragging = draggingTask && draggingTask.projectIndex === projectIndex && draggingTask.rowIndex === rowIndex && draggingTask.taskIndex === taskIndex;
     const isResizing = resizingTask && resizingTask.projectIndex === projectIndex && resizingTask.rowIndex === rowIndex && resizingTask.taskIndex === taskIndex;
 
-    ctx.fillStyle = project.color;
+    ctx.fillStyle = task.color || project.color;
     if (isDragging) ctx.globalAlpha = 0.6;
     if (isResizing) ctx.globalAlpha = 0.4;
 
@@ -1383,7 +1394,7 @@ function drawGhostTask() {
 
     // Dibujar con transparencia
     ctx.globalAlpha = 0.6;
-    ctx.fillStyle = project.color;
+    ctx.fillStyle = task.color || project.color;
 
     if (task.isMilestone) {
         const diamondSize = 20;
