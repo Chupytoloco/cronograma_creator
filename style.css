@@ -46,7 +46,9 @@ body {
     gap: 10px;
 }
 
-#cronograma-title, #start-month, #end-month {
+#cronograma-title,
+#start-month,
+#end-month {
     background-color: #3C3C3C;
     color: #E0E0E0;
     border: 1px solid #555;
@@ -77,7 +79,7 @@ body {
 }
 
 #canvas-container {
-    position: relative; 
+    position: relative;
     background-color: #252526;
 }
 
@@ -89,7 +91,7 @@ body {
     font-weight: bold;
     color: #FFFFFF;
     z-index: 5;
-    pointer-events: none; 
+    pointer-events: none;
 }
 
 
@@ -121,7 +123,7 @@ body {
     padding: 5px;
     border-radius: 4px;
     z-index: 100;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 #task-modal {
@@ -132,7 +134,7 @@ body {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.6);
+    background-color: rgba(0, 0, 0, 0.6);
     justify-content: center;
     align-items: center;
 }
@@ -141,7 +143,7 @@ body {
     background-color: #2D2D2D;
     padding: 25px;
     border-radius: 8px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
     width: fit-content;
     max-width: 90%;
     border-top: 3px solid #4A90E2;
@@ -153,7 +155,8 @@ body {
     margin-bottom: 20px;
     border-bottom: 1px solid var(--border-color);
     cursor: move;
-    user-select: none; /* Evita seleccionar el texto al arrastrar */
+    user-select: none;
+    /* Evita seleccionar el texto al arrastrar */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -162,7 +165,8 @@ body {
 .modal-header h3 {
     margin: 0;
     font-size: 1.2em;
-    pointer-events: none !important; /* Permite que los clics atraviesen el título */
+    pointer-events: none !important;
+    /* Permite que los clics atraviesen el título */
 }
 
 .modal-close-icon {
@@ -180,7 +184,8 @@ body {
     color: #FFF;
 }
 
-#modal-close-btn { /* Botón 'Actualizar' */
+#modal-close-btn {
+    /* Botón 'Actualizar' */
     background-color: #4A90E2;
     color: white;
     border: none;
@@ -212,7 +217,8 @@ body {
     font-family: 'Poppins', sans-serif;
 }
 
-.modal-body input, .modal-body select {
+.modal-body input,
+.modal-body select {
     width: 100%;
     padding: 10px;
     background-color: #3C3C3C;
@@ -282,7 +288,9 @@ label {
     color: #FFFFFF;
 }
 
-input[type="text"], input[type="number"], select {
+input[type="text"],
+input[type="number"],
+select {
     width: 100%;
     padding: 10px;
     background-color: #2A2A2A;
@@ -342,7 +350,8 @@ button.delete:hover {
 }
 
 .project-delete {
-    font-size: 15px; /* 50% de 30px */
+    font-size: 15px;
+    /* 50% de 30px */
 }
 
 .task-item {
@@ -404,11 +413,11 @@ button.delete:hover {
     align-items: end;
 }
 
-.form-row > div {
+.form-row>div {
     flex: 1;
 }
 
-.form-row > div.small {
+.form-row>div.small {
     flex: 0.7;
 }
 
@@ -416,7 +425,7 @@ button.delete:hover {
     background-color: #1E1E1E;
     padding: 30px;
     border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 h1 {
@@ -451,6 +460,7 @@ canvas {
     font-weight: 600;
     flex-grow: 1;
 }
+
 .task-item-small {
     display: flex;
     justify-content: space-between;
@@ -515,6 +525,28 @@ canvas {
     background-color: #383838;
     padding: 8px;
     border-radius: 4px;
+}
+
+.task-edit-header {
+    background-color: transparent !important;
+    padding: 0 8px !important;
+    margin-bottom: 4px !important;
+    border-radius: 0 !important;
+}
+
+.task-edit-header span {
+    flex-grow: 1;
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.task-edit-header span:last-child {
+    flex-grow: 0;
+    width: 36px;
+    /* Ancho del botón eliminar */
 }
 
 #project-modal-tasks-container .task-edit-row input,
@@ -602,7 +634,7 @@ canvas {
     margin-bottom: 15px;
 }
 
-.modal-row > div {
+.modal-row>div {
     flex: 1;
 }
 
@@ -614,7 +646,8 @@ canvas {
 }
 
 #project-modal-add-task-btn {
-    margin-top: 0; /* Lo quitamos para que se alinie con el header */
+    margin-top: 0;
+    /* Lo quitamos para que se alinie con el header */
 }
 
 .button-text-danger {
@@ -664,7 +697,8 @@ canvas {
     line-height: 1;
 }
 
-.button:hover, .nice-button:hover {
+.button:hover,
+.nice-button:hover {
     background-color: #005a9e;
 }
 
@@ -721,7 +755,8 @@ footer {
 
 #paste-area-container {
     position: fixed;
-    bottom: 80px; /* Un poco por encima de la barra inferior */
+    bottom: 80px;
+    /* Un poco por encima de la barra inferior */
     right: 20px;
     width: 300px;
     background-color: var(--panel-bg);
@@ -751,5 +786,6 @@ footer {
 
 #project-list {
     padding: 10px;
-    padding-bottom: 60px; /* Add padding to the bottom to avoid overlap with bottom controls */
-} 
+    padding-bottom: 60px;
+    /* Add padding to the bottom to avoid overlap with bottom controls */
+}

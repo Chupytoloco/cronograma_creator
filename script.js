@@ -47,7 +47,7 @@ window.addEventListener('load', () => {
     populateMonthSelectors();
     loadStateFromLocalStorage();
 
-    document.getElementById('add-project-btn').addEventListener('click', () => openProjectModal());
+    document.getElementById('add-project-btn').addEventListener('click', addDefaultProject);
     document.getElementById('new-schedule-btn').addEventListener('click', createNewSchedule);
     document.getElementById('cronograma-title').addEventListener('input', updatePreview);
     document.getElementById('cronograma-title').addEventListener('change', saveToHistory);
@@ -68,11 +68,6 @@ window.addEventListener('load', () => {
     canvas.addEventListener('mousemove', handleCanvasMouseMove);
     canvas.addEventListener('mouseup', handleCanvasMouseUp);
 
-    // Listeners para el nuevo modal de proyectos
-    document.getElementById('project-modal-close-btn').addEventListener('click', closeProjectModal);
-    document.getElementById('project-modal-save-btn').addEventListener('click', saveProjectFromModal);
-    document.getElementById('project-modal-add-task-btn').addEventListener('click', addTemporaryTask);
-
     // Rastrear el ratón para mostrar/ocultar elementos interactivos
     canvas.addEventListener('mousemove', e => {
         const rect = canvas.getBoundingClientRect();
@@ -89,17 +84,11 @@ window.addEventListener('load', () => {
     // addProject(); 
     updatePreview();
 
-    makeModalDraggable(document.getElementById('project-modal'));
     makeModalDraggable(document.getElementById('task-modal'));
 
     // Listener para cerrar modales con la tecla ESC
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            const projectModal = document.getElementById('project-modal');
-            if (projectModal.style.display !== 'none') {
-                closeProjectModal();
-            }
-
             const taskModal = document.getElementById('task-modal');
             if (taskModal.style.display !== 'none') {
                 closeTaskModal();
@@ -170,17 +159,14 @@ function makeModalDraggable(modal) {
 function populateMonthSelectors(forceReset = false) {
     const startMonthSelect = document.getElementById('start-month');
     const endMonthSelect = document.getElementById('end-month');
-    const projectMonthSelect = document.getElementById('project-modal-start-month');
 
     // Limpiar opciones existentes para evitar duplicados
     startMonthSelect.innerHTML = '';
     endMonthSelect.innerHTML = '';
-    projectMonthSelect.innerHTML = '';
 
     months.forEach((month, index) => {
         startMonthSelect.add(new Option(month, index));
         endMonthSelect.add(new Option(month, index));
-        projectMonthSelect.add(new Option(month, index));
     });
 
     const currentDate = new Date();
@@ -569,6 +555,23 @@ function deleteTask(projectIndex, rowIndex, taskIndex) {
 }
 
 // --- MODAL DE PROYECTO ---
+
+function addDefaultProject() {
+    const projectData = {
+        name: `Proyecto ${projects.length + 1}`,
+        color: colorPalette[nextColorIndex % colorPalette.length],
+        startMonth: parseInt(document.getElementById('start-month').value),
+        tasks: [
+            { name: "Definición", startWeek: 1, duration: 2, isMilestone: false, textPosition: 'outside' },
+            { name: "Diseño", startWeek: 3, duration: 3, isMilestone: false, textPosition: 'outside' },
+            { name: "Desarrollo", startWeek: 6, duration: 5, isMilestone: false, textPosition: 'outside' },
+            { name: "Pruebas", startWeek: 11, duration: 2, isMilestone: false, textPosition: 'outside' },
+            { name: "Entrega", startWeek: 13, duration: 1, isMilestone: true, textPosition: 'outside' }
+        ]
+    };
+    addProject(projectData);
+}
+
 
 function openProjectModal(projectIndex = null) {
     editingProjectId = projectIndex;
