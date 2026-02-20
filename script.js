@@ -39,9 +39,9 @@ const projectIconPadding = 20;
 window.addEventListener('load', () => {
     canvas = document.getElementById('ganttCanvas');
     ctx = canvas.getContext('2d');
-    
+
     // El orden correcto y único de inicialización
-    populateMonthSelectors(); 
+    populateMonthSelectors();
     loadStateFromLocalStorage();
 
     document.getElementById('add-project-btn').addEventListener('click', () => openProjectModal());
@@ -49,7 +49,7 @@ window.addEventListener('load', () => {
     document.getElementById('cronograma-title').addEventListener('input', updatePreview);
     document.getElementById('start-month').addEventListener('change', updatePreview);
     document.getElementById('end-month').addEventListener('change', updatePreview);
-    
+
     // Listeners para guardar y cargar
     document.getElementById('save-btn').addEventListener('click', saveSchedule);
     document.getElementById('load-input').addEventListener('change', loadSchedule);
@@ -106,12 +106,12 @@ function makeModalDraggable(modal) {
     const modalContent = modal.querySelector('.modal-content');
     const header = modal.querySelector('.modal-header');
     let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-    
+
     // Función para obtener la transformación actual de traslación
     function getCurrentTranslate() {
         const transform = window.getComputedStyle(modalContent).transform;
         if (transform === 'none') return { x: 0, y: 0 };
-        
+
         const matrix = transform.match(/matrix.*\((.+)\)/);
         if (matrix && matrix[1]) {
             const matrixValues = matrix[1].split(', ');
@@ -138,9 +138,9 @@ function makeModalDraggable(modal) {
         pos2 = pos4 - e.clientY;
         pos3 = e.clientX;
         pos4 = e.clientY;
-        
+
         const currentPos = getCurrentTranslate();
-        
+
         modalContent.style.transform = `translate(${currentPos.x - pos1}px, ${currentPos.y - pos2}px)`;
     }
 
@@ -154,7 +154,7 @@ function populateMonthSelectors(forceReset = false) {
     const startMonthSelect = document.getElementById('start-month');
     const endMonthSelect = document.getElementById('end-month');
     const projectMonthSelect = document.getElementById('project-modal-start-month');
-    
+
     // Limpiar opciones existentes para evitar duplicados
     startMonthSelect.innerHTML = '';
     endMonthSelect.innerHTML = '';
@@ -193,7 +193,7 @@ function addProject(projectData) {
     nextColorIndex++;
 
     // Agrupar tareas por fila (si es necesario en el futuro) o simplemente ponerlas en una
-    const tasks = projectData.tasks.map(t => ({...t}));
+    const tasks = projectData.tasks.map(t => ({ ...t }));
 
     // Calcular el desfase de semanas
     const globalStartMonth = parseInt(document.getElementById('start-month').value);
@@ -252,11 +252,11 @@ function loadStateFromLocalStorage() {
         const savedState = localStorage.getItem('ganttChartState');
         if (savedState) {
             const data = JSON.parse(savedState);
-            
+
             if (data.title) document.getElementById('cronograma-title').value = data.title;
             if (data.startMonth) document.getElementById('start-month').value = data.startMonth;
             if (data.endMonth) document.getElementById('end-month').value = data.endMonth;
-            
+
             if (data.projects && Array.isArray(data.projects)) {
                 projects.length = 0;
                 Array.prototype.push.apply(projects, data.projects);
@@ -294,10 +294,10 @@ function loadSchedule(event) {
     }
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         try {
             const data = JSON.parse(e.target.result);
-            
+
             if (data.title) {
                 document.getElementById('cronograma-title').value = data.title;
             }
@@ -359,7 +359,7 @@ function handlePaste(event) {
 
     // Obtener texto del portapapeles
     const pastedText = (event.clipboardData || window.clipboardData).getData('text');
-    
+
     // Procesar el texto
     processPastedData(pastedText);
 
@@ -406,7 +406,7 @@ function processPastedData(text) {
     // Añadir los nuevos proyectos y tareas
     for (const projectName in newTasksByProject) {
         let project = projects.find(p => p.name.toLowerCase() === projectName.toLowerCase());
-        
+
         // Si el proyecto no existe, crearlo
         if (!project) {
             project = {
@@ -421,7 +421,7 @@ function processPastedData(text) {
         // Añadir las tareas al proyecto
         newTasksByProject[projectName].forEach(newTaskData => {
             const startWeek = findLatestEndWeek(projects.indexOf(project));
-            project.tasksByRow.push([{...newTaskData, startWeek: startWeek}]);
+            project.tasksByRow.push([{ ...newTaskData, startWeek: startWeek }]);
         });
     }
 
@@ -431,7 +431,7 @@ function processPastedData(text) {
 // --- MANEJO DE TAREAS ---
 function addTask(projectIndex, rowIndex) {
     const newWeek = Math.max(1, Math.floor(totalWeeks / 4));
-    
+
     const task = {
         name: 'Nueva Tarea',
         startWeek: newWeek,
@@ -441,7 +441,7 @@ function addTask(projectIndex, rowIndex) {
     };
 
     const targetRow = projects[projectIndex].tasksByRow[rowIndex];
-    
+
     let collision = false;
     for (const existingTask of targetRow) {
         if (checkCollision(task, existingTask)) {
@@ -449,7 +449,7 @@ function addTask(projectIndex, rowIndex) {
             break;
         }
     }
-    
+
     if (collision) {
         projects[projectIndex].tasksByRow.splice(rowIndex + 1, 0, [task]);
         openTaskModal(projectIndex, rowIndex + 1, 0);
@@ -468,7 +468,7 @@ function deleteTask(projectIndex, rowIndex, taskIndex) {
     if (row.length === 0 && projects[projectIndex].tasksByRow.length > 1) {
         projects[projectIndex].tasksByRow.splice(rowIndex, 1);
     }
-    
+
     closeTaskModal();
     updatePreview();
 }
@@ -479,7 +479,7 @@ function openProjectModal(projectIndex = null) {
     editingProjectId = projectIndex;
     const modal = document.getElementById('project-modal');
     const title = document.getElementById('project-modal-title');
-    
+
     if (projectIndex !== null) {
         // Lógica para editar (no implementada en este paso)
         title.textContent = 'Editar Proyecto';
@@ -490,7 +490,7 @@ function openProjectModal(projectIndex = null) {
         document.getElementById('project-modal-name').value = `Proyecto ${projects.length + 1}`;
         document.getElementById('project-modal-color').value = colorPalette[nextColorIndex % colorPalette.length];
         document.getElementById('project-modal-start-month').value = document.getElementById('start-month').value;
-        
+
         tempModalTasks = [
             { id: Date.now() + 1, name: "Definición", startWeek: 1, duration: 2, isMilestone: false },
             { id: Date.now() + 2, name: "Diseño", startWeek: 3, duration: 3, isMilestone: false },
@@ -499,7 +499,7 @@ function openProjectModal(projectIndex = null) {
             { id: Date.now() + 5, name: "Entrega", startWeek: 13, duration: 1, isMilestone: true }
         ];
     }
-    
+
     renderTemporaryTasks();
     modal.style.display = 'flex';
 }
@@ -530,7 +530,7 @@ function deleteTemporaryTask(taskId) {
 function renderTemporaryTasks() {
     const container = document.getElementById('project-modal-tasks-container');
     container.innerHTML = '';
-    
+
     tempModalTasks.forEach(task => {
         const taskEl = document.createElement('div');
         taskEl.className = 'task-edit-row';
@@ -602,7 +602,7 @@ function saveProjectFromModal() {
 // --- MODAL DE EDICIÓN DE TAREAS ---
 function openTaskModal(projectIndex, rowIndex, taskIndex) {
     editingTask = { project: projectIndex, row: rowIndex, task: taskIndex };
-    
+
     const task = projects[projectIndex].tasksByRow[rowIndex][taskIndex];
     if (!task) return;
 
@@ -622,7 +622,7 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
             deleteTask(projectIndex, rowIndex, taskIndex);
         }
     };
-    
+
     const modalInputs = ['modal-task-name', 'modal-start-week', 'modal-duration', 'modal-task-type', 'modal-text-position'];
     modalInputs.forEach(id => {
         document.getElementById(id).oninput = updateTaskFromModal;
@@ -654,7 +654,7 @@ function updateTaskFromModal() {
 // --- LÓGICA DE DIBUJO ---
 function updatePreview() {
     if (!canvas) return;
-    
+
     totalWeeks = calculateTotalWeeks();
     initCanvasSize();
     animationProgress = 0;
@@ -674,7 +674,7 @@ function initCanvasSize() {
         totalHeight += p.tasksByRow.length * rowHeight;
         totalHeight += 40; // Espacio para el botón '+ Añadir Tarea' y su padding
     });
-    
+
     canvas.height = (totalHeight + rowHeight) * dpr; // Un rowHeight extra para padding inferior
     ctx.scale(dpr, dpr);
 }
@@ -683,7 +683,7 @@ function initCanvasSize() {
 
 function handleCanvasMouseDown(e) {
     if (document.querySelector('.floating-input')) return;
-    
+
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -717,7 +717,7 @@ function handleCanvasMouseDown(e) {
             const onRightEdge = x > hitbox.x + hitbox.width - resizeHandleWidth;
 
             if (!task.isMilestone && (onLeftEdge || onRightEdge)) {
-                resizingTask = { ...hitbox, handle: onLeftEdge ? 'left' : 'right' };
+                resizingTask = { ...hitbox, handle: onLeftEdge ? 'left' : 'right', originalStartWeek: task.startWeek, originalDuration: task.duration };
                 ghostTask = { ...task };
                 canvas.style.cursor = 'ew-resize';
             } else {
@@ -756,50 +756,32 @@ function handleCanvasMouseUp(e) {
     // --- Finalizar Arrastre ---
     if (draggingTask) {
         if (wasDragging) {
-            // Lógica de soltar la tarea (solo si se movió)
-            const mouseY = y;
-            const { projectIndex, rowIndex, taskIndex } = draggingTask;
+            const { projectIndex, rowIndex, taskIndex, dropTarget } = draggingTask;
             const project = projects[projectIndex];
 
             if (project && project.tasksByRow[rowIndex] && project.tasksByRow[rowIndex][taskIndex]) {
                 const task = { ...project.tasksByRow[rowIndex][taskIndex] };
+                const sourceIsOnlyTaskInRow = project.tasksByRow[rowIndex].length === 1;
+
+                // Eliminar la tarea de su posición original
                 project.tasksByRow[rowIndex].splice(taskIndex, 1);
                 if (project.tasksByRow[rowIndex].length === 0) {
                     project.tasksByRow.splice(rowIndex, 1);
                 }
 
-                let projectTopY = headerHeight;
-                for (let i = 0; i < projectIndex; i++) {
-                    projectTopY += 15 + projects[i].tasksByRow.length * rowHeight + 40;
-                }
-                projectTopY += 15;
-
-                const projectContentHeight = project.tasksByRow.length * rowHeight;
-                const projectBottomY = projectTopY + projectContentHeight;
-
-                if (mouseY < projectTopY) {
-                    project.tasksByRow.unshift([task]);
-                } else if (mouseY > projectBottomY) {
+                if (!dropTarget) {
                     project.tasksByRow.push([task]);
                 } else {
-                    const relativeY = mouseY - projectTopY;
-                    let targetRowIndex = Math.floor(relativeY / rowHeight);
-                    targetRowIndex = Math.max(0, Math.min(targetRowIndex, project.tasksByRow.length));
-                    const targetRow = project.tasksByRow[targetRowIndex];
-                    let collision = false;
-                    if (targetRow) {
-                        for (const existingTask of targetRow) {
-                            if (checkCollision(task, existingTask)) {
-                                collision = true;
-                                break;
-                            }
+                    let insertIndex = dropTarget.rowIndex;
+
+                    if (sourceIsOnlyTaskInRow) {
+                        if (insertIndex > rowIndex) {
+                            insertIndex--;
                         }
                     }
-                    if (targetRow && !collision) {
-                        targetRow.push(task);
-                    } else {
-                        project.tasksByRow.splice(collision ? targetRowIndex + 1 : targetRowIndex, 0, [task]);
-                    }
+
+                    insertIndex = Math.max(0, Math.min(insertIndex, project.tasksByRow.length));
+                    project.tasksByRow.splice(insertIndex, 0, [task]);
                 }
             }
             updatePreview();
@@ -834,13 +816,13 @@ function handleCanvasMouseUp(e) {
                 return; // Acción completada
             }
         }
-        
+
         // Buscar si se hizo clic en una tarea
         for (const hitbox of taskHitboxes) {
             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
                 // El clic está dentro de la tarea. Ahora comprobamos si está en los bordes para redimensionar.
                 const task = projects[hitbox.projectIndex].tasksByRow[hitbox.rowIndex][hitbox.taskIndex];
-                
+
                 const onLeftEdge = x < hitbox.x + resizeHandleWidth;
                 const onRightEdge = x > hitbox.x + hitbox.width - resizeHandleWidth;
 
@@ -868,26 +850,26 @@ function handleCanvasMouseMove(e) {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
+
     // --- Lógica para cambiar el cursor al pasar por encima ---
     if (!draggingTask && !resizingTask) {
         let newCursor = 'default';
         let onTask = false;
-        
+
         // Comprobar si está sobre una tarea (y si es redimensionable)
         for (const hitbox of taskHitboxes) {
-             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
-                 onTask = true;
-                 const task = projects[hitbox.projectIndex].tasksByRow[hitbox.rowIndex][hitbox.taskIndex];
-                 const onLeftEdge = x < hitbox.x + resizeHandleWidth;
-                 const onRightEdge = x > hitbox.x + hitbox.width - resizeHandleWidth;
-                 if (!task.isMilestone && (onLeftEdge || onRightEdge)) {
-                     newCursor = 'ew-resize';
-                 } else {
-                     newCursor = 'grab';
-                 }
-                 break;
-             }
+            if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+                onTask = true;
+                const task = projects[hitbox.projectIndex].tasksByRow[hitbox.rowIndex][hitbox.taskIndex];
+                const onLeftEdge = x < hitbox.x + resizeHandleWidth;
+                const onRightEdge = x > hitbox.x + hitbox.width - resizeHandleWidth;
+                if (!task.isMilestone && (onLeftEdge || onRightEdge)) {
+                    newCursor = 'ew-resize';
+                } else {
+                    newCursor = 'grab';
+                }
+                break;
+            }
         }
 
         // Comprobar si está sobre el botón '+'
@@ -899,7 +881,7 @@ function handleCanvasMouseMove(e) {
                 }
             }
         }
-        
+
         // Comprobar si está sobre un icono de proyecto
         if (!onTask && newCursor === 'default' && getIconUnderCursor(x, y)) {
             newCursor = 'pointer';
@@ -913,17 +895,19 @@ function handleCanvasMouseMove(e) {
     if (resizingTask) {
         const weekWidth = (canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth) / totalWeeks;
         const currentWeek = Math.round((x - projectLabelWidth) / weekWidth);
-        
+
         if (resizingTask.handle === 'left') {
-            const startDiff = ghostTask.startWeek - currentWeek;
-            const newDuration = ghostTask.duration + startDiff;
+            // Calcular siempre desde los valores originales para evitar acumulación de errores
+            const originalEnd = resizingTask.originalStartWeek + resizingTask.originalDuration;
+            const newDuration = originalEnd - currentWeek;
             if (newDuration >= 0.5) {
                 ghostTask.startWeek = currentWeek;
                 ghostTask.duration = newDuration;
             }
         } else {
-            const newDuration = currentWeek - ghostTask.startWeek;
+            const newDuration = currentWeek - resizingTask.originalStartWeek;
             if (newDuration >= 0.5) {
+                ghostTask.startWeek = resizingTask.originalStartWeek;
                 ghostTask.duration = newDuration;
             }
         }
@@ -954,7 +938,9 @@ function handleCanvasMouseMove(e) {
             newStartWeek = Math.max(0, Math.min(newStartWeek, totalWeeks - task.duration));
             task.startWeek = newStartWeek;
 
-            // Calcular el destino potencial para el feedback visual
+            // Calcular el destino potencial para el feedback visual.
+            // Debe coincidir exactamente con el layout de drawProjects,
+            // que inserta un placeholder que desplaza las filas siguientes.
             let projectTopY = headerHeight;
             for (let i = 0; i < projectIndex; i++) {
                 projectTopY += 15 + projects[i].tasksByRow.length * rowHeight + 40;
@@ -962,17 +948,33 @@ function handleCanvasMouseMove(e) {
             projectTopY += 15;
 
             const numRows = projects[projectIndex].tasksByRow.length;
+
+            // Encontrar el slot más cercano al cursor iterando por los bordes
+            // de las filas. Cada slot "i" representa insertar ANTES de la fila i
+            // (o después de la última si i === numRows).
+            // Usamos los puntos medios entre filas como umbrales.
+            let bestSlot = 0;
+            let slotY = projectTopY; // Y del borde superior de cada fila/slot
+
+            for (let i = 0; i <= numRows; i++) {
+                // El centro de la transición entre slot i-1 y slot i está en slotY
+                if (y < slotY) {
+                    break;
+                }
+                bestSlot = i;
+                if (i < numRows) {
+                    slotY += rowHeight;
+                }
+            }
+            bestSlot = Math.max(0, Math.min(bestSlot, numRows));
+
             const projectBottomY = projectTopY + numRows * rowHeight;
-            
             if (y > projectTopY - rowHeight / 2 && y < projectBottomY + rowHeight / 2) {
-                const relativeY = y - projectTopY;
-                let targetRowIndex = Math.round(relativeY / rowHeight);
-                targetRowIndex = Math.max(0, Math.min(targetRowIndex, numRows));
-                draggingTask.dropTarget = { projectIndex, rowIndex: targetRowIndex };
+                draggingTask.dropTarget = { projectIndex, rowIndex: bestSlot };
             } else {
                 draggingTask.dropTarget = null;
             }
-            
+
             draw();
         }
     }
@@ -999,13 +1001,13 @@ function draw() {
 function drawGrid() {
     ctx.fillStyle = '#1E1E1E';
     ctx.fillRect(0, 0, canvas.width, headerHeight);
-    
+
     const dpr = ctx.getTransform().a || 1;
     const logicalCanvasWidth = canvas.width / dpr;
     const chartWidth = logicalCanvasWidth - projectLabelWidth;
     const weekWidth = chartWidth / totalWeeks;
     const startDate = getStartDate();
-    
+
     let lastMonth = -1;
     let monthStartX = projectLabelWidth;
     let weeksInCurrentMonth = 0;
@@ -1043,7 +1045,7 @@ function drawGrid() {
         ctx.textAlign = 'center';
         ctx.fillText(`S${i + 1}`, x + weekWidth / 2, headerHeight / 2 + 15);
     }
-    
+
     if (lastMonth !== -1) {
         ctx.fillStyle = 'rgba(255,255,255,0.05)';
         ctx.fillRect(monthStartX, 0, weeksInCurrentMonth * weekWidth, headerHeight);
@@ -1069,16 +1071,16 @@ function drawProjects() {
     if (!isDrawingForExport) {
         addTaskHitboxes = []; // Limpiar hitboxes en cada redibujado
     }
-    
+
     projects.forEach((project, projectIndex) => {
-        y += 15; 
+        y += 15;
 
         // Dibujar siempre el nombre del proyecto y sus iconos
         const projectHeight = project.tasksByRow.length * rowHeight;
         const projectCenterY = y + projectHeight / 2;
         const textMetrics = ctx.measureText(project.name);
         const textX = 20;
-        
+
         // Si no hay tareas, centrar el texto en el espacio de margen superior
         const textY = (project.tasksByRow.length > 0) ? projectCenterY : y + (15 / 2);
 
@@ -1096,14 +1098,14 @@ function drawProjects() {
             projectIndex
         };
         projectHitboxes.push(projectHitbox);
-        
+
         // El área de hover ahora incluye los iconos
         const numIcons = 4; // color, delete, move up, move down
         const iconsWidth = (projectIconSize + projectIconPadding) * numIcons;
         const hoverAreaWidth = projectHitbox.width + iconsWidth;
 
         const isHovering = lastMousePosition.x >= projectHitbox.x && lastMousePosition.x <= projectHitbox.x + hoverAreaWidth &&
-                           lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
+            lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
 
         if (isHovering && !draggingTask && !resizingTask && !isDrawingForExport) {
             drawProjectIcons(ctx, projectHitbox);
@@ -1149,7 +1151,7 @@ function drawProjects() {
                 height: buttonHeight,
                 projectIndex
             });
-            
+
             y += buttonHeight + 15; // Espacio extra después del botón
         }
     });
@@ -1160,7 +1162,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
     if (isDraggingThisTask) {
         return; // El "fantasma" se dibujará por separado para que siga al cursor
     }
-    
+
     const dpr = ctx.getTransform().a || 1;
     const logicalCanvasWidth = canvas.width / dpr;
     const chartWidth = logicalCanvasWidth - projectLabelWidth;
@@ -1172,7 +1174,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
     let barWidth = fullBarWidth * animationProgress;
 
     const hitbox = { x: startX, y: barY, width: fullBarWidth, height: barHeight, projectIndex, rowIndex, taskIndex };
-    
+
     if (task.isMilestone) {
         const diamondSize = 20;
         hitbox.width = diamondSize;
@@ -1291,7 +1293,7 @@ function drawGhostTask() {
     } else {
         roundRect(ctx, startX, barY, barWidth, barHeight, 8, true, false);
     }
-    
+
     // Dibujar el texto dentro del fantasma
     ctx.font = taskFont;
     ctx.textAlign = 'left';
@@ -1311,12 +1313,12 @@ function createFloatingInput(hitbox) {
     input.type = 'text';
     input.className = 'floating-input';
     input.value = projects[hitbox.projectIndex].name;
-    
+
     const canvasContainer = document.getElementById('canvas-container');
     if (getComputedStyle(canvasContainer).position !== 'relative') {
-        canvasContainer.style.position = 'relative'; 
+        canvasContainer.style.position = 'relative';
     }
-    
+
     const dpr = window.devicePixelRatio || 1;
     input.style.left = `${hitbox.x}px`;
     input.style.top = `${hitbox.y}px`;
@@ -1348,7 +1350,7 @@ function createFloatingInput(hitbox) {
     };
     setTimeout(() => {
         input.addEventListener('keydown', handleKeyDown);
-        document.addEventListener('mousedown', handleClickOutside, true); 
+        document.addEventListener('mousedown', handleClickOutside, true);
     }, 100);
 }
 
@@ -1378,7 +1380,7 @@ function getIconUnderCursor(x, y) {
     projectHitboxes.forEach(hitbox => {
         const iconY = hitbox.y + (hitbox.height / 2) - (projectIconSize / 2);
         const iconBaseX = hitbox.x + hitbox.width + projectIconPadding;
-        
+
         const colorIconX = iconBaseX;
         if (x >= colorIconX && x <= colorIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
             foundIcon = { type: 'color', projectIndex: hitbox.projectIndex };
@@ -1499,7 +1501,7 @@ function addSimpleTask(projectIndex) {
     // Añadir la tarea a la primera fila libre o a una nueva
     // (Lógica simplificada: la añade al final)
     p.tasksByRow.push([newTask]);
-    
+
     updatePreview();
 }
 
@@ -1517,7 +1519,7 @@ async function copyChartToClipboard() {
     // Guardar estado original
     const originalTotalWeeks = totalWeeks;
     ctx.save(); // Guarda el estado del contexto actual (transformaciones, etc.)
-    
+
     try {
         // 2. Calcular las dimensiones lógicas finales para la exportación
         let maxEndWeek = 0;
@@ -1551,9 +1553,9 @@ async function copyChartToClipboard() {
 
         totalWeeks = exportTotalWeeks;
         isDrawingForExport = true;
-        
+
         // 4. Dibujar el cronograma en el canvas de exportación
-        draw(); 
+        draw();
 
         // 5. Convertir el canvas a Blob y copiar al portapapeles
         canvas.toBlob(async (blob) => {
@@ -1564,7 +1566,7 @@ async function copyChartToClipboard() {
             try {
                 await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
                 console.log('¡Cronograma copiado como imagen!');
-                
+
                 const feedbackId = 'copy-feedback';
                 let copyFeedback = document.getElementById(feedbackId);
                 if (!copyFeedback) {
@@ -1582,7 +1584,7 @@ async function copyChartToClipboard() {
                     copyFeedback.style.zIndex = '1001';
                     document.body.appendChild(copyFeedback);
                 }
-                
+
                 copyFeedback.style.display = 'block';
                 setTimeout(() => { copyFeedback.style.display = 'none'; }, 2000);
 
@@ -1665,12 +1667,12 @@ function exportToExcel() {
         }
         scanDate.setDate(scanDate.getDate() + 7);
     }
-    
+
     monthLabels.forEach((label, index) => {
         const startCol = label.startWeek + 2; // +2 por las columnas Proyecto y Tarea
         const endWeek = (index + 1 < monthLabels.length) ? monthLabels[index + 1].startWeek : totalWeeks;
         const endCol = endWeek + 1;
-        
+
         ws_data[0][startCol] = label.month;
         if (endCol > startCol) {
             merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: endCol } });
@@ -1687,7 +1689,7 @@ function exportToExcel() {
             taskRow[0] = p.name;
             taskRow[1] = task.name;
             ws_data.push(taskRow);
-            
+
             // Guardamos la información para colorear la barra de esta tarea
             styleMap.push({
                 rowIndex: excelRowIndex,
@@ -1706,7 +1708,7 @@ function exportToExcel() {
     styleMap.forEach(item => {
         // La primera semana (startWeek) corresponde a la columna de la semana + 1 (por la columna Tarea)
         const startCol = item.startWeek + 1;
-        
+
         for (let w = 0; w < item.duration; w++) {
             const colIndex = startCol + w;
             if (colIndex < totalWeeks + 2) {
@@ -1718,7 +1720,7 @@ function exportToExcel() {
             }
         }
     });
-    
+
     // 5. AJUSTAR ANCHO DE COLUMNAS
     ws['!cols'] = [
         { wch: 30 }, // Columna Proyecto
@@ -1727,7 +1729,7 @@ function exportToExcel() {
     for (let i = 0; i < totalWeeks; i++) {
         ws['!cols'].push({ wch: 4 }); // Ancho para las columnas de semanas
     }
-    
+
     // 6. GENERAR Y DESCARGAR EL ARCHIVO
     XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
     const cronogramaTitle = document.getElementById('cronograma-title').value || 'cronograma';
