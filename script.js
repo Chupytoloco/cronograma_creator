@@ -135,6 +135,10 @@ window.addEventListener('load', () => {
             if (taskModal.style.display !== 'none') {
                 closeTaskModal();
             }
+            const projectModal = document.getElementById('project-edit-modal');
+            if (projectModal && projectModal.style.display !== 'none') {
+                closeProjectEditModal();
+            }
         }
         if (e.ctrlKey && e.key === 'z') {
             e.preventDefault();
@@ -396,11 +400,9 @@ function updateProjectColor(index, newColor) {
 }
 
 function deleteProject(index) {
-    if (confirm(`¿Estás seguro de que quieres eliminar "${projects[index].name}"?`)) {
-        projects.splice(index, 1);
-        updatePreview();
-        saveToHistory();
-    }
+    projects.splice(index, 1);
+    updatePreview();
+    saveToHistory();
 }
 
 // --- GUARDAR Y CARGAR ---
@@ -656,7 +658,6 @@ function deleteTask(projectIndex, rowIndex, taskIndex) {
 }
 
 // --- MODAL DE PROYECTO ---
-
 function addDefaultProject() {
     const projectData = {
         name: `Proyecto ${projects.length + 1}`,
@@ -674,134 +675,51 @@ function addDefaultProject() {
 }
 
 
-function openProjectModal(projectIndex = null) {
+function openProjectEditModal(projectIndex) {
     editingProjectId = projectIndex;
-    const modal = document.getElementById('project-modal');
-    const title = document.getElementById('project-modal-title');
+    const project = projects[projectIndex];
+    if (!project) return;
 
-    if (projectIndex !== null) {
-        // Lógica para editar (no implementada en este paso)
-        title.textContent = 'Editar Proyecto';
-        // Aquí se cargarían los datos del proyecto existente
-    } else {
-        // Lógica para crear
-        title.textContent = 'Añadir Nuevo Proyecto';
-        document.getElementById('project-modal-name').value = `Proyecto ${projects.length + 1}`;
-        document.getElementById('project-modal-color').value = colorPalette[nextColorIndex % colorPalette.length];
-        document.getElementById('project-modal-start-month').value = document.getElementById('start-month').value;
+    document.getElementById('modal-project-name').value = project.name;
+    document.getElementById('modal-project-color').value = project.color;
 
-        tempModalTasks = [
-            { id: Date.now() + 1, name: "Definición", startWeek: 1, duration: 2, isMilestone: false },
-            { id: Date.now() + 2, name: "Diseño", startWeek: 3, duration: 3, isMilestone: false },
-            { id: Date.now() + 3, name: "Desarrollo", startWeek: 6, duration: 5, isMilestone: false },
-            { id: Date.now() + 4, name: "Pruebas", startWeek: 11, duration: 2, isMilestone: false },
-            { id: Date.now() + 5, name: "Entrega", startWeek: 13, duration: 1, isMilestone: true }
-        ];
-        saveToHistory(); // Guardar estado antes de empezar a añadir un nuevo proyecto
-    }
-
-    renderTemporaryTasks();
+    const modal = document.getElementById('project-edit-modal');
     modal.style.display = 'flex';
-}
+    saveToHistory();
 
-function closeProjectModal() {
-    document.getElementById('project-modal').style.display = 'none';
-    tempModalTasks = [];
-    editingProjectId = null;
-}
+    modal.querySelector('.modal-close-icon').onclick = closeProjectEditModal;
 
-function addTemporaryTask() {
-    const newId = Date.now();
-    tempModalTasks.push({
-        id: newId,
-        name: 'Nueva Tarea',
-        startWeek: 1,
-        duration: 2,
-        isMilestone: false
-    });
-    renderTemporaryTasks();
-}
-
-function deleteTemporaryTask(taskId) {
-    tempModalTasks = tempModalTasks.filter(t => t.id !== taskId);
-    renderTemporaryTasks();
-}
-
-function renderTemporaryTasks() {
-    const container = document.getElementById('project-modal-tasks-container');
-    container.innerHTML = '';
-
-    tempModalTasks.forEach(task => {
-        const taskEl = document.createElement('div');
-        taskEl.className = 'task-edit-row';
-        taskEl.innerHTML = `
-            <input type="text" value="${task.name}" data-task-id="${task.id}" data-property="name" placeholder="Nombre de tarea">
-            <input type="number" value="${task.startWeek}" data-task-id="${task.id}" data-property="startWeek" min="1" title="Semana de inicio (relativa)">
-            <input type="number" value="${task.duration}" data-task-id="${task.id}" data-property="duration" min="0.5" step="0.5" title="Duración en semanas">
-            <select data-task-id="${task.id}" data-property="isMilestone">
-                <option value="false" ${!task.isMilestone ? 'selected' : ''}>Normal</option>
-                <option value="true" ${task.isMilestone ? 'selected' : ''}>Hito</option>
-            </select>
-            <button class="delete-task-btn" data-task-id="${task.id}">🗑️</button>
-        `;
-        container.appendChild(taskEl);
-    });
-
-    // Add event listeners for the new elements
-    container.querySelectorAll('input, select').forEach(el => {
-        el.addEventListener('change', updateTemporaryTask);
-    });
-    container.querySelectorAll('.delete-task-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const taskId = Number(e.currentTarget.getAttribute('data-task-id'));
-            deleteTemporaryTask(taskId);
-        });
-    });
-}
-
-function updateTemporaryTask(e) {
-    const taskId = Number(e.target.getAttribute('data-task-id'));
-    const property = e.target.getAttribute('data-property');
-    let value = e.target.value;
-
-    if (e.target.type === 'number') {
-        value = parseFloat(value);
-        if (property === 'duration' && value < 0.5) value = 0.5;
-        if (property === 'startWeek' && value < 1) value = 1;
-        e.target.value = value;
-    } else if (property === 'isMilestone') {
-        value = value === 'true';
-    }
-
-    const taskIndex = tempModalTasks.findIndex(t => t.id === taskId);
-    if (taskIndex > -1) {
-        tempModalTasks[taskIndex][property] = value;
-    }
-}
-
-function saveProjectFromModal() {
-    const projectData = {
-        name: document.getElementById('project-modal-name').value,
-        color: document.getElementById('project-modal-color').value,
-        startMonth: parseInt(document.getElementById('project-modal-start-month').value),
-        tasks: tempModalTasks.map(t => ({
-            name: t.name,
-            startWeek: t.startWeek,
-            duration: t.duration,
-            isMilestone: t.isMilestone,
-            textPosition: 'outside' // Posición de texto por defecto
-        }))
+    document.getElementById('modal-project-delete-btn').onclick = () => {
+        if (confirm(`¿Estás seguro de que quieres eliminar el proyecto "${project.name}"?`)) {
+            deleteProject(projectIndex);
+            closeProjectEditModal();
+        }
     };
 
-    if (editingProjectId !== null) {
-        // Lógica para actualizar proyecto (no implementada)
-    } else {
-        addProject(projectData);
-    }
+    const modalInputs = ['modal-project-name', 'modal-project-color'];
+    modalInputs.forEach(id => {
+        const input = document.getElementById(id);
+        input.removeEventListener('input', updateProjectFromModal);
+        input.addEventListener('input', updateProjectFromModal);
+    });
+}
+
+function closeProjectEditModal() {
+    const modal = document.getElementById('project-edit-modal');
+    if (modal) modal.style.display = 'none';
+    editingProjectId = null;
+    saveToHistory();
+}
+
+function updateProjectFromModal() {
+    if (editingProjectId === null || editingProjectId === undefined) return;
+    const project = projects[editingProjectId];
+    if (!project) return;
+
+    project.name = document.getElementById('modal-project-name').value.trim() || 'Proyecto sin nombre';
+    project.color = document.getElementById('modal-project-color').value;
 
     updatePreview();
-    saveToHistory();
-    closeProjectModal();
 }
 
 // --- MODAL DE EDICIÓN DE TAREAS ---
@@ -927,28 +845,6 @@ function handleCanvasMouseDown(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const icon = getIconUnderCursor(x, y);
-    if (icon) {
-        if (icon.type === 'color') {
-            const colorInput = document.createElement('input');
-            colorInput.type = 'color';
-            colorInput.value = projects[icon.projectIndex].color;
-            colorInput.style.display = 'none';
-            document.body.appendChild(colorInput);
-            colorInput.oninput = () => updateProjectColor(icon.projectIndex, colorInput.value);
-            colorInput.onchange = () => document.body.removeChild(colorInput);
-            colorInput.click();
-        } else if (icon.type === 'delete') {
-            deleteProject(icon.projectIndex);
-        } else if (icon.type === 'move-up') {
-            moveProject(icon.projectIndex, -1);
-        } else if (icon.type === 'move-down') {
-            moveProject(icon.projectIndex, 1);
-        }
-        e.preventDefault();
-        return;
-    }
-
     for (const hitbox of taskHitboxes) {
         if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
             const task = projects[hitbox.projectIndex].tasksByRow[hitbox.rowIndex][hitbox.taskIndex];
@@ -1054,18 +950,6 @@ function handleCanvasMouseUp(e) {
 
     // --- Lógica de Edición por Clic (se ejecuta si no hubo arrastre ni redimensión) ---
     if (!wasDragging && !wasResizing) {
-        // Buscar si se hizo clic en los iconos de un proyecto
-        const iconClicked = getIconUnderCursor(x, y);
-        if (iconClicked) {
-            if (iconClicked.type === 'delete') {
-                deleteProject(iconClicked.projectIndex);
-                return;
-            } else if (iconClicked.type === 'edit') {
-                openProjectModal(iconClicked.projectIndex);
-                return;
-            }
-        }
-
         // Buscar si se hizo clic en el botón '+' para añadir tarea
         for (const hitbox of addTaskHitboxes) {
             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
@@ -1096,7 +980,7 @@ function handleCanvasMouseUp(e) {
         for (const hitbox of projectHitboxes) {
             // Solo activar si el clic es en el área del texto, no en toda la fila del proyecto
             if (x >= hitbox.x && x <= hitbox.x + projectLabelWidth && y >= hitbox.y && y <= hitbox.y + rowHeight) {
-                createFloatingInput(hitbox);
+                openProjectEditModal(hitbox.projectIndex);
                 return;
             }
         }
@@ -1378,17 +1262,10 @@ function drawProjects() {
         };
         projectHitboxes.push(projectHitbox);
 
-        // El área de hover ahora incluye los iconos
-        const numIcons = 4; // color, delete, move up, move down
-        const iconsWidth = (projectIconSize + projectIconPadding) * numIcons;
-        const hoverAreaWidth = projectHitbox.width + iconsWidth;
+        const hoverAreaWidth = projectHitbox.width;
 
         const isHovering = lastMousePosition.x >= projectHitbox.x && lastMousePosition.x <= projectHitbox.x + hoverAreaWidth &&
             lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
-
-        if (isHovering && !draggingTask && !resizingTask && !isDrawingForExport) {
-            drawProjectIcons(ctx, projectHitbox);
-        }
 
         const isDropTargetProject = draggingTask && draggingTask.didMove && draggingTask.dropTarget?.projectIndex === projectIndex;
         const dropRowIndex = isDropTargetProject ? draggingTask.dropTarget.rowIndex : -1;
@@ -1694,59 +1571,7 @@ function createFloatingInput(hitbox) {
     }, 100);
 }
 
-function drawProjectIcons(ctx, hitbox) {
-    const y = hitbox.y + (hitbox.height / 2);
-    const iconBaseX = hitbox.x + hitbox.width + projectIconPadding;
-
-    // Icono de color
-    ctx.fillText('🎨', iconBaseX, y);
-
-    // Icono de editar (si es necesario)
-
-    // Icono de eliminar
-    const deleteIconX = iconBaseX + projectIconSize + projectIconPadding;
-    ctx.fillText('🗑️', deleteIconX, y);
-
-    // Iconos para mover arriba/abajo
-    const moveUpIconX = deleteIconX + projectIconSize + projectIconPadding;
-    ctx.fillText('🔼', moveUpIconX, y);
-
-    const moveDownIconX = moveUpIconX + projectIconSize + projectIconPadding;
-    ctx.fillText('🔽', moveDownIconX, y);
-}
-
-function getIconUnderCursor(x, y) {
-    let foundIcon = null;
-    projectHitboxes.forEach(hitbox => {
-        const iconY = hitbox.y + (hitbox.height / 2) - (projectIconSize / 2);
-        const iconBaseX = hitbox.x + hitbox.width + projectIconPadding;
-
-        const colorIconX = iconBaseX;
-        if (x >= colorIconX && x <= colorIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
-            foundIcon = { type: 'color', projectIndex: hitbox.projectIndex };
-            return;
-        }
-
-        const deleteIconX = colorIconX + projectIconSize + projectIconPadding;
-        if (x >= deleteIconX && x <= deleteIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
-            foundIcon = { type: 'delete', projectIndex: hitbox.projectIndex };
-            return;
-        }
-
-        const moveUpIconX = deleteIconX + projectIconSize + projectIconPadding;
-        if (x >= moveUpIconX && x <= moveUpIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
-            foundIcon = { type: 'move-up', projectIndex: hitbox.projectIndex };
-            return;
-        }
-
-        const moveDownIconX = moveUpIconX + projectIconSize + projectIconPadding;
-        if (x >= moveDownIconX && x <= moveDownIconX + projectIconSize && y >= iconY && y <= iconY + projectIconSize) {
-            foundIcon = { type: 'move-down', projectIndex: hitbox.projectIndex };
-            return;
-        }
-    });
-    return foundIcon;
-}
+// Removido drawProjectIcons y getIconUnderCursor porque ya no se usan
 
 // --- UTILIDADES ---
 function truncateText(ctx, text, maxWidth) {

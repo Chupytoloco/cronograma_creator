@@ -154,6 +154,29 @@
         </div>
     </div>
 
+    <!-- Modal para editar proyectos -->
+    <div id="project-edit-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Editar Proyecto</h3>
+                <button class="modal-close-icon">&times;</button>
+            </div>
+            <label for="modal-project-name">Nombre del Proyecto:</label>
+            <input type="text" id="modal-project-name">
+
+            <div class="modal-row">
+                <div>
+                    <label for="modal-project-color">Color Proyecto:</label>
+                    <input type="color" id="modal-project-color">
+                </div>
+            </div>
+
+            <div class="modal-actions" style="display: flex; justify-content: flex-start;">
+                <button id="modal-project-delete-btn" class="button-text-danger">Eliminar Proyecto</button>
+            </div>
+        </div>
+    </div>
+
     <footer>
         <p>Powered by juangenovardortiz@gmail.com</p>
     </footer>
