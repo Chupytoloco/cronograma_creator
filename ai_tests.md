@@ -13,3 +13,7 @@ Comprobar: Se abre un modal titulado "Editar Proyecto" con un campo de texto par
 Test 4: Eliminar Proyecto con el Modal
 Acceso: Hacer clic sobre el nombre de un proyecto en el canvas para abrir el modal "Editar Proyecto".
 Comprobar: Aparece en la parte inferior el botón "Eliminar Proyecto". Al pulsar Eliminar, pide confirmación y si se acepta, el proyecto desaparece del canvas y el modal se cierra.
+
+Test 5: Icono Visto en Botón Completar
+Acceso: Hacer clic en la barra de una tarea en el canvas para abrir el modal.
+Comprobar: En la parte inferior derecha del modal, el botón de "Completar" (o "Descompletar") muestra el mismo icono circular verde con el check que se usa en el canvas, a la izquierda del texto de acción.

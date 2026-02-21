@@ -743,7 +743,11 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
     modal.querySelector('.modal-close-icon').onclick = closeTaskModal;
 
     const completeBtn = document.getElementById('modal-complete-btn');
-    completeBtn.textContent = task.completed ? 'Descompletar' : 'Completar';
+    const checkmarkSVG = `<svg width="18" height="18" viewBox="0 0 22 22" style="vertical-align: middle; margin-right: 5px; margin-bottom: 2px;">
+        <circle cx="11" cy="11" r="10" fill="#4CAF50" stroke="#FFFFFF" stroke-width="1.5"/>
+        <path d="M6.6 11 L9.9 14.85 L15.4 7.15" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </svg>`;
+    completeBtn.innerHTML = checkmarkSVG + (task.completed ? 'Descompletar' : 'Completar');
     completeBtn.onclick = () => {
         task.completed = !task.completed;
         saveToHistory();
