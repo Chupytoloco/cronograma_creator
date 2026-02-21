@@ -1231,6 +1231,11 @@ function draw() {
     if (draggingProject && draggingProject.didMove) {
         drawGhostProject();
     }
+
+    const testStateEl = document.getElementById('app-test-state');
+    if (testStateEl) {
+        testStateEl.innerText = JSON.stringify(projects);
+    }
 }
 
 function drawGrid() {
