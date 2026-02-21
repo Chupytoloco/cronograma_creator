@@ -824,6 +824,15 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
 
     modal.querySelector('.modal-close-icon').onclick = closeTaskModal;
 
+    const completeBtn = document.getElementById('modal-complete-btn');
+    completeBtn.textContent = task.completed ? 'Descompletar' : 'Completar';
+    completeBtn.onclick = () => {
+        task.completed = !task.completed;
+        saveToHistory();
+        updatePreview();
+        closeTaskModal();
+    };
+
     document.getElementById('modal-delete-btn').onclick = () => {
         if (confirm(`¿Estás seguro de que quieres eliminar la tarea "${task.name}"?`)) {
             deleteTask(projectIndex, rowIndex, taskIndex);
@@ -1473,7 +1482,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
     ctx.rect(projectLabelWidth, headerHeight, chartWidth, canvas.height / dpr - headerHeight);
     ctx.clip();
 
-    ctx.fillStyle = task.color || project.color;
+    ctx.fillStyle = task.completed ? '#666666' : (task.color || project.color);
     if (isDragging) ctx.globalAlpha = 0.6;
     if (isResizing) ctx.globalAlpha = 0.4;
 
@@ -1563,6 +1572,11 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
                 }
             }
         }
+    }
+
+    if (task.completed) {
+        let centerX = task.isMilestone ? startX + 10 : startX + barWidth / 2;
+        drawCheckIcon(ctx, centerX, y, 11);
     }
 
     ctx.restore(); // Restaurar el clipping del área del gráfico
@@ -1762,6 +1776,31 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.closePath();
     if (fill) ctx.fill();
     if (stroke) ctx.stroke();
+}
+
+function drawCheckIcon(ctx, x, y, radius) {
+    ctx.save();
+    // Círculo verde de fondo
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#4CAF50';
+    ctx.fill();
+    // Borde blanco
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.stroke();
+
+    // Visto blanco
+    ctx.beginPath();
+    ctx.moveTo(x - radius * 0.4, y);
+    ctx.lineTo(x - radius * 0.1, y + radius * 0.35);
+    ctx.lineTo(x + radius * 0.4, y - radius * 0.35);
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+    ctx.restore();
 }
 
 function animate(currentTime) {
