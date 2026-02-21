@@ -1,6 +1,7 @@
 let projects = [];
 let editingTask = { project: -1, row: -1, task: -1 }; // Almacena qué tarea se está editando en el modal
 let draggingTask = null;
+let draggingProject = null;
 let resizingTask = null; // { projectIndex, rowIndex, taskIndex, handle: 'left' | 'right' }
 let ghostTask = null; // Copia de la tarea que se está redimensionando
 let lastMousePosition = { x: 0, y: 0 }; // Rastrear la posición del ratón
@@ -849,6 +850,21 @@ function handleCanvasMouseDown(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    for (const hitbox of projectHitboxes) {
+        if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+            draggingProject = {
+                projectIndex: hitbox.projectIndex,
+                offsetY: y - hitbox.y,
+                startY: y,
+                didMove: false,
+                targetIndex: hitbox.projectIndex
+            };
+            canvas.style.cursor = 'grabbing';
+            e.preventDefault();
+            return;
+        }
+    }
+
     for (const hitbox of taskHitboxes) {
         if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
             const task = projects[hitbox.projectIndex].tasksByRow[hitbox.rowIndex][hitbox.taskIndex];
@@ -884,6 +900,7 @@ function handleCanvasMouseUp(e) {
     const y = e.clientY - rect.top;
 
     const wasDragging = draggingTask?.didMove;
+    const wasDraggingProject = draggingProject?.didMove;
     const wasResizing = !!resizingTask;
 
     // --- Finalizar Redimensión ---
@@ -945,15 +962,34 @@ function handleCanvasMouseUp(e) {
         }
     }
 
+    if (draggingProject) {
+        if (wasDraggingProject) {
+            const { projectIndex, targetIndex } = draggingProject;
+            if (projectIndex !== targetIndex) {
+                const projectNode = projects.splice(projectIndex, 1)[0];
+                let insertIndex = targetIndex;
+                if (projectIndex < targetIndex) {
+                    insertIndex -= 1;
+                }
+                projects.splice(insertIndex, 0, projectNode);
+                updatePreview();
+                saveToHistory();
+            }
+        } else {
+            openProjectEditModal(draggingProject.projectIndex);
+        }
+    }
+
     // Limpiar estado y resetear cursor al finalizar cualquier acción
     if (resizingTask) resizingTask = null;
     if (ghostTask) ghostTask = null;
     if (draggingTask) draggingTask = null;
+    if (draggingProject) draggingProject = null;
     canvas.style.cursor = 'default';
 
 
     // --- Lógica de Edición por Clic (se ejecuta si no hubo arrastre ni redimensión) ---
-    if (!wasDragging && !wasResizing) {
+    if (!wasDragging && !wasResizing && !wasDraggingProject) {
         // Buscar si se hizo clic en el botón '+' para añadir tarea
         for (const hitbox of addTaskHitboxes) {
             if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
@@ -979,15 +1015,6 @@ function handleCanvasMouseUp(e) {
                 }
             }
         }
-
-        // Buscar si se hizo clic en el nombre de un proyecto para editarlo
-        for (const hitbox of projectHitboxes) {
-            // Solo activar si el clic es en el área del texto, no en toda la fila del proyecto
-            if (x >= hitbox.x && x <= hitbox.x + projectLabelWidth && y >= hitbox.y && y <= hitbox.y + rowHeight) {
-                openProjectEditModal(hitbox.projectIndex);
-                return;
-            }
-        }
     }
 }
 
@@ -997,7 +1024,7 @@ function handleCanvasMouseMove(e) {
     const y = e.clientY - rect.top;
 
     // --- Lógica para cambiar el cursor al pasar por encima ---
-    if (!draggingTask && !resizingTask) {
+    if (!draggingTask && !resizingTask && !draggingProject) {
         let newCursor = 'default';
         let onTask = false;
 
@@ -1027,6 +1054,16 @@ function handleCanvasMouseMove(e) {
             }
         }
 
+        // Comprobar si está sobre el área de proyecto (etiqueta lateral)
+        if (!onTask && newCursor === 'default') {
+            for (const hitbox of projectHitboxes) {
+                if (x >= hitbox.x && x <= hitbox.x + hitbox.width && y >= hitbox.y && y <= hitbox.y + hitbox.height) {
+                    newCursor = 'grab';
+                    break;
+                }
+            }
+        }
+
         // Comprobar si está sobre un icono de proyecto
         if (!onTask && newCursor === 'default' && getIconUnderCursor(x, y)) {
             newCursor = 'pointer';
@@ -1034,6 +1071,33 @@ function handleCanvasMouseMove(e) {
 
         canvas.style.cursor = newCursor;
         return; // Salir si no estamos arrastrando o redimensionando
+    }
+
+    // --- Lógica de Arrastre de Proyecto ---
+    if (draggingProject) {
+        if (!draggingProject.didMove) {
+            const dy = y - draggingProject.startY;
+            if (Math.abs(dy) > 5) {
+                draggingProject.didMove = true;
+            }
+        }
+
+        if (draggingProject.didMove) {
+            let currentY = headerHeight;
+            let newTargetIndex = projects.length;
+
+            for (let i = 0; i < projects.length; i++) {
+                const projectHeight = 15 + projects[i].tasksByRow.length * rowHeight + 40;
+                if (y < currentY + projectHeight / 2) {
+                    newTargetIndex = i;
+                    break;
+                }
+                currentY += projectHeight;
+            }
+            draggingProject.targetIndex = newTargetIndex;
+            draw();
+        }
+        return;
     }
 
     // --- Lógica de Redimensión ---
@@ -1163,6 +1227,10 @@ function draw() {
     if (draggingTask && draggingTask.didMove) {
         drawGhostTask();
     }
+
+    if (draggingProject && draggingProject.didMove) {
+        drawGhostProject();
+    }
 }
 
 function drawGrid() {
@@ -1240,6 +1308,17 @@ function drawProjects() {
     }
 
     projects.forEach((project, projectIndex) => {
+        if (draggingProject && draggingProject.didMove && draggingProject.targetIndex === projectIndex) {
+            drawProjectDropLine(y);
+        }
+
+        const projectStartY = y;
+
+        const isDraggingThisProject = draggingProject && draggingProject.didMove && draggingProject.projectIndex === projectIndex;
+        if (isDraggingThisProject) {
+            ctx.globalAlpha = 0.3;
+        }
+
         y += 15;
 
         // Dibujar siempre el nombre del proyecto y sus iconos
@@ -1256,20 +1335,6 @@ function drawProjects() {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(project.name, textX, textY);
-
-        const projectHitbox = {
-            x: textX,
-            y: textY - rowHeight / 2,
-            width: textMetrics.width,
-            height: rowHeight,
-            projectIndex
-        };
-        projectHitboxes.push(projectHitbox);
-
-        const hoverAreaWidth = projectHitbox.width;
-
-        const isHovering = lastMousePosition.x >= projectHitbox.x && lastMousePosition.x <= projectHitbox.x + hoverAreaWidth &&
-            lastMousePosition.y >= projectHitbox.y && lastMousePosition.y <= projectHitbox.y + projectHitbox.height;
 
         const isDropTargetProject = draggingTask && draggingTask.didMove && draggingTask.dropTarget?.projectIndex === projectIndex;
         const dropRowIndex = isDropTargetProject ? draggingTask.dropTarget.rowIndex : -1;
@@ -1321,7 +1386,35 @@ function drawProjects() {
 
             y += buttonHeight + 15; // Espacio extra después del botón
         }
+
+        const projectHitbox = {
+            x: 0,
+            y: projectStartY,
+            width: projectLabelWidth,
+            height: y - projectStartY,
+            projectIndex
+        };
+        projectHitboxes.push(projectHitbox);
+
+        if (isDraggingThisProject) {
+            ctx.globalAlpha = 1.0;
+        }
     });
+
+    if (draggingProject && draggingProject.didMove && draggingProject.targetIndex === projects.length) {
+        drawProjectDropLine(y);
+    }
+}
+
+function drawProjectDropLine(y) {
+    ctx.save();
+    ctx.strokeStyle = '#4A90E2';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(projectLabelWidth, y);
+    ctx.stroke();
+    ctx.restore();
 }
 
 function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
@@ -1485,6 +1578,26 @@ function drawMergeHighlight(y) {
     ctx.lineWidth = 1.5;
     ctx.strokeRect(projectLabelWidth, y, canvas.width / dpr - projectLabelWidth, rowHeight);
     ctx.restore();
+}
+
+function drawGhostProject() {
+    if (!draggingProject || !draggingProject.didMove) return;
+    const project = projects[draggingProject.projectIndex];
+    if (!project) return;
+
+    const ghostY = lastMousePosition.y - draggingProject.offsetY;
+
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = canvasSidebarBg;
+    ctx.fillRect(0, ghostY - 10, projectLabelWidth, 40);
+
+    ctx.fillStyle = project.color;
+    ctx.font = projectFont;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(project.name, 20, ghostY + 10);
+
+    ctx.globalAlpha = 1.0;
 }
 
 function drawGhostTask() {
