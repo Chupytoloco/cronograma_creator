@@ -26,7 +26,7 @@ const resizeHandleWidth = 10; // Ancho del área de redimensión
 const colorPalette = ['#4A90E2', '#8E44AD', '#E67E22', '#27AE60', '#F1C40F', '#C0392B', '#16A085', '#2980B9'];
 let nextColorIndex = 0;
 
-const months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+let months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 let totalWeeks = 26; // Se calcula dinámicamente
 
 const rowHeight = 35;
@@ -47,14 +47,112 @@ const taskFont = "14px Poppins";
 const projectIconSize = 18;
 const projectIconPadding = 20;
 
+const translations = {
+    es: {
+        newBtn: "Nuevo", saveBtn: "Guardar", copyBtn: "Copiar", excelBtn: "Excel",
+        undoBtn: "Deshacer", redoBtn: "Rehacer", scheduleLabel: "Cronograma:",
+        schedulePlaceholder: "Título del Cronograma", startLabel: "Inicio:",
+        endLabel: "Fin:", themeLabel: "Tema:", langLabel: "Idioma:",
+        themeDark: "Oscuro", themeLight: "Claro", themeModern: "Moderno", themeGray: "Gris",
+        addProjectBtn: "Añadir Proyecto", pasteExcelBtn: "Excel", importBtn: "Importar",
+        pasteInstructions: "Pega aquí tu tabla desde Excel (Proyecto en Columna A, Tarea en Columna B).",
+        editTaskTitle: "Editar Tarea", taskNameLabel: "Tarea:", taskStartLabel: "Semana Inicio:",
+        taskDurationLabel: "Duración (semanas):", taskTypeLabel: "Tipo:",
+        taskTypeNormal: "Normal", taskTypeMilestone: "Hito", taskTextPositionLabel: "Posición Texto:",
+        taskTextInside: "Dentro", taskTextOutside: "Fuera", taskColorLabel: "Color Tarea:",
+        deleteTaskBtn: "Eliminar Tarea", completeBtn: "Completar", uncompleteBtn: "Descompletar",
+        editProjectTitle: "Editar Proyecto", projectNameLabel: "Nombre del Proyecto:",
+        projectColorLabel: "Color Proyecto:", deleteProjectBtn: "Eliminar Proyecto",
+        months: ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"],
+        weekPrefix: "S", newProjectDefault: "Nuevo Proyecto", newTaskDefault: "Nueva Tarea",
+        copying: "Copiando...", copied: "¡Copiado!",
+        confirmDeleteProject: "¿Estás seguro de que deseas eliminar este proyecto y todas sus tareas?",
+        confirmDeleteTask: "¿Estás seguro de que deseas eliminar esta tarea?",
+        confirmImport: "Se han detectado {0} tareas para importar. ¿Quieres añadirlas al cronograma actual?\n\nLas tareas existentes no se eliminarán.",
+        newScheduleConfirm: "¿Estás seguro de crear un nuevo cronograma? Se perderán los datos no guardados.",
+        exportFilename: "Cronograma.xlsx",
+        newScheduleTitle: "Nuevo Cronograma", saveScheduleTitle: "Guardar Cronograma",
+        copyImageTitle: "Copiar como Imagen", exportExcelTitle: "Exportar a Excel",
+        undoTitle: "Deshacer (Ctrl+Z)", redoTitle: "Rehacer (Ctrl+Y)", resetColorTitle: "Restaurar color del proyecto",
+        addTaskAction: "+ Añadir tarea"
+    },
+    en: {
+        newBtn: "New", saveBtn: "Save", copyBtn: "Copy", excelBtn: "Excel",
+        undoBtn: "Undo", redoBtn: "Redo", scheduleLabel: "Schedule:",
+        schedulePlaceholder: "Schedule Title", startLabel: "Start:",
+        endLabel: "End:", themeLabel: "Theme:", langLabel: "Language:",
+        themeDark: "Dark", themeLight: "Light", themeModern: "Modern", themeGray: "Gray",
+        addProjectBtn: "Add Project", pasteExcelBtn: "Excel", importBtn: "Import",
+        pasteInstructions: "Paste your Excel table here (Project in Column A, Task in Column B).",
+        editTaskTitle: "Edit Task", taskNameLabel: "Task Name:", taskStartLabel: "Start Week:",
+        taskDurationLabel: "Duration (weeks):", taskTypeLabel: "Type:",
+        taskTypeNormal: "Normal", taskTypeMilestone: "Milestone", taskTextPositionLabel: "Text Position:",
+        taskTextInside: "Inside", taskTextOutside: "Outside", taskColorLabel: "Task Color:",
+        deleteTaskBtn: "Delete Task", completeBtn: "Complete", uncompleteBtn: "Uncomplete",
+        editProjectTitle: "Edit Project", projectNameLabel: "Project Name:",
+        projectColorLabel: "Project Color:", deleteProjectBtn: "Delete Project",
+        months: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"],
+        weekPrefix: "W", newProjectDefault: "New Project", newTaskDefault: "New Task",
+        copying: "Copying...", copied: "Copied!",
+        confirmDeleteProject: "Are you sure you want to delete this project and all its tasks?",
+        confirmDeleteTask: "Are you sure you want to delete this task?",
+        confirmImport: "{0} tasks detected for import. Do you want to add them to the current schedule?\n\nExisting tasks will not be deleted.",
+        newScheduleConfirm: "Are you sure you want to create a new schedule? Unsaved data will be lost.",
+        exportFilename: "Schedule.xlsx",
+        newScheduleTitle: "New Schedule", saveScheduleTitle: "Save Schedule",
+        copyImageTitle: "Copy as Image", exportExcelTitle: "Export to Excel",
+        undoTitle: "Undo (Ctrl+Z)", redoTitle: "Redo (Ctrl+Y)", resetColorTitle: "Reset project color",
+        addTaskAction: "+ Add task"
+    }
+};
+
+function applyLanguage(lang) {
+    const t = translations[lang] || translations['es'];
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (t[key]) el.textContent = t[key];
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (t[key]) el.setAttribute('placeholder', t[key]);
+    });
+
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.getAttribute('data-i18n-title');
+        if (t[key]) el.setAttribute('title', t[key]);
+    });
+
+    months = t.months;
+    const startMonth = document.getElementById('start-month').value;
+    const endMonth = document.getElementById('end-month').value;
+    populateMonthSelectors();
+    document.getElementById('start-month').value = startMonth;
+    document.getElementById('end-month').value = endMonth;
+
+    updatePreview();
+}
+
+function getTranslation(key) {
+    const lang = document.getElementById('lang-selector')?.value || 'es';
+    return (translations[lang] && translations[lang][key]) ? translations[lang][key] : (translations['es'][key] || key);
+}
+
 // --- INICIALIZACIÓN ---
 window.addEventListener('load', () => {
     canvas = document.getElementById('ganttCanvas');
     ctx = canvas.getContext('2d');
 
+    // Detectar el idioma del navegador y rellenar el dropdown
+    const langSelector = document.getElementById('lang-selector');
+    const browserLang = (navigator.language || navigator.userLanguage || "es").substring(0, 2).toLowerCase();
+    langSelector.value = browserLang === 'en' ? 'en' : 'es';
+
     // El orden correcto y único de inicialización
     populateMonthSelectors();
     loadStateFromLocalStorage();
+    applyLanguage(langSelector.value);
 
     document.getElementById('add-project-btn').addEventListener('click', addDefaultProject);
     document.getElementById('new-schedule-btn').addEventListener('click', createNewSchedule);
@@ -94,6 +192,11 @@ window.addEventListener('load', () => {
     document.getElementById('theme-selector').addEventListener('change', (e) => {
         applyTheme(e.target.value);
         updatePreview();
+        saveToHistory();
+    });
+    document.getElementById('lang-selector').addEventListener('change', (e) => {
+        applyLanguage(e.target.value);
+        saveStateToLocalStorage();
         saveToHistory();
     });
 
@@ -415,6 +518,7 @@ function saveStateToLocalStorage() {
             startMonth: document.getElementById('start-month').value,
             endMonth: document.getElementById('end-month').value,
             theme: document.getElementById('theme-selector').value,
+            lang: document.getElementById('lang-selector').value,
             projects: projects
         };
         localStorage.setItem('ganttChartState', JSON.stringify(state));
@@ -435,6 +539,9 @@ function loadStateFromLocalStorage() {
             if (data.theme) {
                 document.getElementById('theme-selector').value = data.theme;
                 applyTheme(data.theme);
+            }
+            if (data.lang) {
+                document.getElementById('lang-selector').value = data.lang;
             }
 
             if (data.projects && Array.isArray(data.projects)) {
@@ -498,7 +605,7 @@ function loadSchedule(event) {
             saveToHistory();
 
         } catch (error) {
-            alert('Error al cargar el archivo. Asegúrate de que es un archivo de cronograma válido.');
+            alert(getTranslation('Error al cargar el archivo. Asegúrate de que es un archivo de cronograma válido.'));
             console.error("Error parsing JSON:", error);
         } finally {
             // Resetear el valor del input para permitir cargar el mismo archivo de nuevo
@@ -555,10 +662,8 @@ function processPastedData(text) {
     if (rows.length === 0) return;
 
     // Pedir confirmación al usuario
-    const confirmation = confirm(
-        `Se han detectado ${rows.length} tareas para importar. ¿Quieres añadirlas al cronograma actual?\n\n` +
-        "Las tareas existentes no se eliminarán."
-    );
+    const confirmMessage = getTranslation('confirmImport').replace('{0}', rows.length);
+    const confirmation = confirm(confirmMessage);
 
     if (!confirmation) return;
 
@@ -616,7 +721,7 @@ function addTask(projectIndex, rowIndex) {
     const newWeek = Math.max(1, Math.floor(totalWeeks / 4));
 
     const task = {
-        name: 'Nueva Tarea',
+        name: getTranslation('newTaskDefault'),
         startWeek: newWeek,
         duration: 4,
         isMilestone: false,
@@ -748,7 +853,8 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
         <circle cx="11" cy="11" r="10" fill="#4CAF50" stroke="#FFFFFF" stroke-width="1.5"/>
         <path d="M6.6 11 L9.9 14.85 L15.4 7.15" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
     </svg>`;
-    completeBtn.innerHTML = checkmarkSVG + (task.completed ? 'Descompletar' : 'Completar');
+    const btnText = task.completed ? getTranslation('uncompleteBtn') : getTranslation('completeBtn');
+    completeBtn.innerHTML = checkmarkSVG + btnText;
     completeBtn.onclick = () => {
         task.completed = !task.completed;
         saveToHistory();
@@ -1283,7 +1389,7 @@ function drawGrid() {
         ctx.fillStyle = canvasMutedText;
         ctx.font = gridFont;
         ctx.textAlign = 'center';
-        ctx.fillText(`S${i + 1}`, x + weekWidth / 2, headerHeight / 2 + 15);
+        ctx.fillText(`${getTranslation('weekPrefix')}${i + 1}`, x + weekWidth / 2, headerHeight / 2 + 15);
     }
 
     if (lastMonth !== -1) {
@@ -1379,7 +1485,7 @@ function drawProjects() {
             ctx.font = '13px Poppins';
             ctx.textAlign = 'left';
             ctx.textBaseline = 'middle';
-            ctx.fillText('+ Añadir tarea', projectLabelWidth + 10, buttonY + buttonHeight / 2);
+            ctx.fillText(getTranslation('addTaskAction'), projectLabelWidth + 10, buttonY + buttonHeight / 2);
 
             addTaskHitboxes.push({
                 x: projectLabelWidth,
@@ -1817,7 +1923,7 @@ function addSimpleTask(projectIndex) {
     const latestEndWeek = findLatestEndWeek(projectIndex);
 
     const newTask = {
-        name: 'Nueva Tarea',
+        name: getTranslation('newTaskDefault'),
         startWeek: Math.ceil(latestEndWeek), // Empezar justo después
         duration: 2, // Duración por defecto
         type: 'normal',
@@ -1899,7 +2005,7 @@ async function copyChartToClipboard() {
                 if (!copyFeedback) {
                     copyFeedback = document.createElement('div');
                     copyFeedback.id = feedbackId;
-                    copyFeedback.textContent = '¡Copiado!';
+                    copyFeedback.textContent = getTranslation('copied');
                     copyFeedback.style.position = 'fixed';
                     copyFeedback.style.top = '20px';
                     copyFeedback.style.left = '50%';
@@ -1917,7 +2023,7 @@ async function copyChartToClipboard() {
 
             } catch (err) {
                 console.error('Error al copiar al portapapeles:', err);
-                alert('Error al copiar la imagen. Es posible que tu navegador no lo soporte.');
+                alert(getTranslation('Error al copiar la imagen. Es posible que tu navegador no lo soporte.'));
             }
         }, 'image/png');
 
@@ -1934,7 +2040,7 @@ async function copyChartToClipboard() {
 }
 
 function createNewSchedule() {
-    if (confirm("¿Estás seguro de que quieres empezar un nuevo cronograma? Se perderán todos los cambios no guardados.")) {
+    if (confirm(getTranslation('newScheduleConfirm'))) {
         // Limpiar proyectos
         projects.length = 0;
 
@@ -1968,7 +2074,7 @@ function exportToExcel() {
 
     const totalWeeks = calculateTotalWeeks();
     if (totalWeeks <= 0) {
-        alert("No hay datos en el cronograma para exportar.");
+        alert(getTranslation("No hay datos en el cronograma para exportar."));
         return;
     }
 
@@ -1977,7 +2083,7 @@ function exportToExcel() {
     const monthRow = ['Proyecto', 'Tarea'];
     const weekRow = ['', ''];
     for (let i = 1; i <= totalWeeks; i++) {
-        weekRow.push(`S${i}`);
+        weekRow.push(`${getTranslation('weekPrefix')}${i}`);
         monthRow.push(''); // Relleno que se completará con los nombres de los meses
     }
     ws_data.push(monthRow);

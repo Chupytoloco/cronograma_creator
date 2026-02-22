@@ -19,8 +19,9 @@ Cronograma Interactivo
 │   ├── Mes de inicio                  → Desplegable "Inicio:" — Seleccionar de ENE a DIC
 │   └── Mes de fin                     → Desplegable "Fin:" — Seleccionar de ENE a DIC
 │
-├── 🎨 Apariencia
-│   └── Cambiar tema visual            → Desplegable "Tema:" — Opciones: Oscuro, Claro, Moderno, Gris
+├── 🎨 Apariencia y Configuración
+│   ├── Cambiar tema visual            → Desplegable "Tema:" — Opciones: Oscuro, Claro, Moderno, Gris
+│   └── Cambiar idioma                 → Desplegable "Idioma:" — Opciones: ES, EN (Por defecto según navegador)
 │
 ├── ↩️ Historial de Cambios
 │   ├── Deshacer                       → Botón "↶ Deshacer" / Atajo Ctrl+Z

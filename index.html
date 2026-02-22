@@ -23,51 +23,68 @@
         <div class="top-bar">
             <div class="title-container">
                 <div class="icon-btn-wrapper">
-                    <button id="new-schedule-btn" class="nice-button icon-button" title="Nuevo Cronograma">📄</button>
-                    <span class="icon-btn-label">Nuevo</span>
+                    <button id="new-schedule-btn" class="nice-button icon-button" title="Nuevo Cronograma"
+                        data-i18n-title="newScheduleTitle">📄</button>
+                    <span class="icon-btn-label" data-i18n="newBtn">Nuevo</span>
                 </div>
                 <div class="icon-btn-wrapper">
-                    <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma">💾</button>
-                    <span class="icon-btn-label">Guardar</span>
+                    <button id="save-btn" class="nice-button icon-button" title="Guardar Cronograma"
+                        data-i18n-title="saveScheduleTitle">💾</button>
+                    <span class="icon-btn-label" data-i18n="saveBtn">Guardar</span>
                 </div>
                 <div class="icon-btn-wrapper">
-                    <button id="copy-btn" class="nice-button icon-button" title="Copiar como Imagen">📋</button>
-                    <span class="icon-btn-label">Copiar</span>
+                    <button id="copy-btn" class="nice-button icon-button" title="Copiar como Imagen"
+                        data-i18n-title="copyImageTitle">📋</button>
+                    <span class="icon-btn-label" data-i18n="copyBtn">Copiar</span>
                 </div>
                 <div class="icon-btn-wrapper">
-                    <button id="export-excel-btn" class="nice-button icon-button" title="Exportar a Excel">📊</button>
-                    <span class="icon-btn-label">Excel</span>
+                    <button id="export-excel-btn" class="nice-button icon-button" title="Exportar a Excel"
+                        data-i18n-title="exportExcelTitle">📊</button>
+                    <span class="icon-btn-label" data-i18n="excelBtn">Excel</span>
                 </div>
                 <div class="icon-btn-wrapper">
-                    <button id="undo-btn" class="nice-button icon-button" title="Deshacer (Ctrl+Z)">↶</button>
-                    <span class="icon-btn-label">Deshacer</span>
+                    <button id="undo-btn" class="nice-button icon-button" title="Deshacer (Ctrl+Z)"
+                        data-i18n-title="undoTitle">↶</button>
+                    <span class="icon-btn-label" data-i18n="undoBtn">Deshacer</span>
                 </div>
                 <div class="icon-btn-wrapper">
-                    <button id="redo-btn" class="nice-button icon-button" title="Rehacer (Ctrl+Y)">↷</button>
-                    <span class="icon-btn-label">Rehacer</span>
+                    <button id="redo-btn" class="nice-button icon-button" title="Rehacer (Ctrl+Y)"
+                        data-i18n-title="redoTitle">↷</button>
+                    <span class="icon-btn-label" data-i18n="redoBtn">Rehacer</span>
                 </div>
-                <input type="text" id="cronograma-title" value="Mi Cronograma" placeholder="Título del Cronograma">
+                <div class="select-group title-input-wrapper">
+                    <label for="cronograma-title" class="title-label" data-i18n="scheduleLabel">Cronograma:</label>
+                    <input type="text" id="cronograma-title" value="Mi Cronograma" placeholder="Título del Cronograma"
+                        data-i18n-placeholder="schedulePlaceholder">
+                </div>
             </div>
             <div class="controls">
                 <div class="select-group">
-                    <label for="start-month">Inicio:</label>
+                    <label for="start-month" data-i18n="startLabel">Inicio:</label>
                     <select id="start-month">
                         <!-- Opciones se generarán dinámicamente -->
                     </select>
                 </div>
                 <div class="select-group">
-                    <label for="end-month">Fin:</label>
+                    <label for="end-month" data-i18n="endLabel">Fin:</label>
                     <select id="end-month">
                         <!-- Opciones se generarán dinámicamente -->
                     </select>
                 </div>
                 <div class="select-group">
-                    <label for="theme-selector">Tema:</label>
+                    <label for="theme-selector" data-i18n="themeLabel">Tema:</label>
                     <select id="theme-selector">
-                        <option value="oscuro">Oscuro</option>
-                        <option value="claro">Claro</option>
-                        <option value="moderno">Moderno</option>
-                        <option value="gris">Gris</option>
+                        <option value="oscuro" data-i18n="themeDark">Oscuro</option>
+                        <option value="claro" data-i18n="themeLight">Claro</option>
+                        <option value="moderno" data-i18n="themeModern">Moderno</option>
+                        <option value="gris" data-i18n="themeGray">Gris</option>
+                    </select>
+                </div>
+                <div class="select-group">
+                    <label for="lang-selector" data-i18n="langLabel">Idioma:</label>
+                    <select id="lang-selector">
+                        <option value="es">ES</option>
+                        <option value="en">EN</option>
                     </select>
                 </div>
             </div>
@@ -79,11 +96,11 @@
 
         <div class="bottom-controls">
             <div>
-                <button id="add-project-btn" class="nice-button">Añadir Proyecto</button>
-                <button id="paste-table-btn" class="nice-button">Excel</button>
+                <button id="add-project-btn" class="nice-button" data-i18n="addProjectBtn">Añadir Proyecto</button>
+                <button id="paste-table-btn" class="nice-button" data-i18n="pasteExcelBtn">Excel</button>
             </div>
             <div>
-                <label for="load-input" id="load-btn" class="nice-button">Importar</label>
+                <label for="load-input" id="load-btn" class="nice-button" data-i18n="importBtn">Importar</label>
                 <input type="file" id="load-input" style="display: none;" accept=".json">
             </div>
         </div>
@@ -91,7 +108,7 @@
 
     <!-- Área de pegado de tabla (inicialmente oculta) -->
     <div id="paste-area-container" style="display: none;">
-        <div id="paste-instructions">
+        <div id="paste-instructions" data-i18n="pasteInstructions">
             Pega aquí tu tabla desde Excel (Proyecto en Columna A, Tarea en Columna B).
         </div>
         <textarea id="paste-textarea" placeholder="Ctrl+V"></textarea>
@@ -105,56 +122,56 @@
     <div id="task-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" data-testid="task-modal-content">
             <div class="modal-header">
-                <h3>Editar Tarea</h3>
+                <h3 data-i18n="editTaskTitle">Editar Tarea</h3>
                 <button class="modal-close-icon" data-testid="task-modal-close">&times;</button>
             </div>
-            <label for="modal-task-name">Tarea:</label>
+            <label for="modal-task-name" data-i18n="taskNameLabel">Tarea:</label>
             <input type="text" id="modal-task-name" data-testid="task-name-input">
 
             <div class="modal-row">
                 <div>
-                    <label for="modal-start-week">Semana Inicio:</label>
+                    <label for="modal-start-week" data-i18n="taskStartLabel">Semana Inicio:</label>
                     <input type="number" id="modal-start-week" min="1" data-testid="task-start-week-input">
                 </div>
                 <div>
-                    <label for="modal-duration">Duración (semanas):</label>
+                    <label for="modal-duration" data-i18n="taskDurationLabel">Duración (semanas):</label>
                     <input type="number" id="modal-duration" min="0.5" step="0.5" data-testid="task-duration-input">
                 </div>
             </div>
 
             <div class="modal-row">
                 <div>
-                    <label for="modal-task-type">Tipo:</label>
+                    <label for="modal-task-type" data-i18n="taskTypeLabel">Tipo:</label>
                     <select id="modal-task-type" data-testid="task-type-select">
-                        <option value="normal">Normal</option>
-                        <option value="milestone">Hito</option>
+                        <option value="normal" data-i18n="taskTypeNormal">Normal</option>
+                        <option value="milestone" data-i18n="taskTypeMilestone">Hito</option>
                     </select>
                 </div>
                 <div>
-                    <label for="modal-text-position">Posición Texto:</label>
+                    <label for="modal-text-position" data-i18n="taskTextPositionLabel">Posición Texto:</label>
                     <select id="modal-text-position">
-                        <option value="inside">Dentro</option>
-                        <option value="outside">Fuera</option>
+                        <option value="inside" data-i18n="taskTextInside">Dentro</option>
+                        <option value="outside" data-i18n="taskTextOutside">Fuera</option>
                     </select>
                 </div>
             </div>
 
             <div class="modal-row">
                 <div>
-                    <label for="modal-task-color">Color Tarea:</label>
+                    <label for="modal-task-color" data-i18n="taskColorLabel">Color Tarea:</label>
                     <div style="display: flex; gap: 5px; align-items: center;">
                         <input type="color" id="modal-task-color" data-testid="task-color-input">
                         <button id="modal-reset-color-btn" class="reset-color-btn" title="Restaurar color del proyecto"
-                            data-testid="task-reset-color-btn">🔄</button>
+                            data-testid="task-reset-color-btn" data-i18n-title="resetColorTitle">🔄</button>
                     </div>
                 </div>
             </div>
 
             <div class="modal-actions" style="display: flex; justify-content: space-between;">
-                <button id="modal-delete-btn" class="button-text-danger" data-testid="task-delete-btn">Eliminar
-                    Tarea</button>
+                <button id="modal-delete-btn" class="button-text-danger" data-testid="task-delete-btn"
+                    data-i18n="deleteTaskBtn">Eliminar Tarea</button>
                 <button id="modal-complete-btn" class="button-text-success" data-testid="task-complete-btn"
-                    data-task-completed="false">Completar</button>
+                    data-task-completed="false" data-i18n="completeBtn">Completar</button>
             </div>
         </div>
     </div>
@@ -163,22 +180,22 @@
     <div id="project-edit-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content" data-testid="project-modal-content">
             <div class="modal-header">
-                <h3>Editar Proyecto</h3>
+                <h3 data-i18n="editProjectTitle">Editar Proyecto</h3>
                 <button class="modal-close-icon" data-testid="project-modal-close">&times;</button>
             </div>
-            <label for="modal-project-name">Nombre del Proyecto:</label>
+            <label for="modal-project-name" data-i18n="projectNameLabel">Nombre del Proyecto:</label>
             <input type="text" id="modal-project-name" data-testid="project-name-input">
 
             <div class="modal-row">
                 <div>
-                    <label for="modal-project-color">Color Proyecto:</label>
+                    <label for="modal-project-color" data-i18n="projectColorLabel">Color Proyecto:</label>
                     <input type="color" id="modal-project-color" data-testid="project-color-input">
                 </div>
             </div>
 
             <div class="modal-actions" style="display: flex; justify-content: flex-start;">
-                <button id="modal-project-delete-btn" class="button-text-danger"
-                    data-testid="project-delete-btn">Eliminar Proyecto</button>
+                <button id="modal-project-delete-btn" class="button-text-danger" data-testid="project-delete-btn"
+                    data-i18n="deleteProjectBtn">Eliminar Proyecto</button>
             </div>
         </div>
     </div>
