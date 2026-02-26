@@ -14,14 +14,14 @@ const MAX_HISTORY = 50;
 
 let canvas, ctx;
 let lastStartMonth = null; // Para detectar el cambio en el mes de inicio
-let animationProgress = 0;
+let animationProgress = 1; // Animation disabled, always render fully
 let lastTime = 0;
-const animationDuration = 800;
+const animationDuration = 0;
 let taskHitboxes = [];
 let projectHitboxes = [];
 let addTaskHitboxes = []; // Hitboxes para los botones de 'Añadir Tarea'
 let isDrawingForExport = false; // Flag para el dibujado de exportación
-const resizeHandleWidth = 10; // Ancho del área de redimensión
+const resizeHandleWidth = 15; // Ancho del área de redimensión
 
 const colorPalette = ['#4A90E2', '#8E44AD', '#E67E22', '#27AE60', '#F1C40F', '#C0392B', '#16A085', '#2980B9'];
 let nextColorIndex = 0;
@@ -253,6 +253,9 @@ window.addEventListener('load', () => {
             redo();
         }
     });
+
+    // Actualizar canvas cuando cambia el tamaño de la ventana
+    window.addEventListener('resize', updatePreview);
 
     // Guardar estado inicial
     setTimeout(saveToHistory, 500); // Un pequeño retraso para asegurar que todo se cargó
@@ -919,13 +922,13 @@ function updateTaskFromModal() {
 }
 
 
-// --- LÓGICA DE DIBUJO ---
+// --- LÓGICA DE DIBUJO
 function updatePreview() {
     if (!canvas) return;
 
     totalWeeks = calculateTotalWeeks();
     initCanvasSize();
-    animationProgress = 0;
+    animationProgress = 1;
     lastTime = 0;
     requestAnimationFrame(animate);
     saveStateToLocalStorage();
@@ -933,8 +936,6 @@ function updatePreview() {
 
 function initCanvasSize() {
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * dpr;
 
     let totalHeight = headerHeight;
     projects.forEach(p => {
@@ -943,7 +944,15 @@ function initCanvasSize() {
         totalHeight += 40; // Espacio para el botón '+ Añadir Tarea' y su padding
     });
 
-    canvas.height = (totalHeight + rowHeight) * dpr; // Un rowHeight extra para padding inferior
+    const finalHeight = totalHeight + rowHeight;
+    // Forzar el estilo CSS primero para que el documento muestre la barra de scroll si es necesaria
+    canvas.style.height = `${finalHeight}px`;
+
+    // Leer el ancho real (se actualizará si apareció el scrollbar)
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = finalHeight * dpr; // Un rowHeight extra para padding inferior
+
     ctx.scale(dpr, dpr);
 }
 
@@ -1115,7 +1124,10 @@ function handleCanvasMouseUp(e) {
 
                 // Abrir el modal solo si es un hito (que no se redimensiona) o si el clic
                 // no fue en ninguno de los bordes de redimensión.
-                if (task.isMilestone || (!onLeftEdge && !onRightEdge)) {
+                if (!wasResizing && (task.isMilestone || (!onLeftEdge && !onRightEdge))) {
+                    // Solo abrimos el modal si realmente NO estábamos justo terminando
+                    // una redimensión o arrastre (la variable 'wasResizing' arriba ya cubre esto parcialmente,
+                    // pero si se hace clic rapidísimo en el borde sin mover el ratón se lanzaba esto).
                     openTaskModal(hitbox.projectIndex, hitbox.rowIndex, hitbox.taskIndex);
                     return;
                 }
@@ -1170,10 +1182,10 @@ function handleCanvasMouseMove(e) {
             }
         }
 
-        // Comprobar si está sobre un icono de proyecto
-        if (!onTask && newCursor === 'default' && getIconUnderCursor(x, y)) {
-            newCursor = 'pointer';
-        }
+        // Comprobar si está sobre un icono de proyecto (función eliminada o no implementada)
+        // if (!onTask && newCursor === 'default' && getIconUnderCursor(x, y)) {
+        //     newCursor = 'pointer';
+        // }
 
         canvas.style.cursor = newCursor;
         return; // Salir si no estamos arrastrando o redimensionando
@@ -1213,14 +1225,14 @@ function handleCanvasMouseMove(e) {
 
         if (resizingTask.handle === 'left') {
             // Calcular siempre desde los valores originales para evitar acumulación de errores
-            const originalEnd = resizingTask.originalStartWeek + resizingTask.originalDuration;
-            const newDuration = originalEnd - currentWeek;
+            const originalEndGrid = (resizingTask.originalStartWeek - 1) + resizingTask.originalDuration;
+            const newDuration = originalEndGrid - currentWeek;
             if (newDuration >= 0.5) {
-                ghostTask.startWeek = currentWeek;
+                ghostTask.startWeek = currentWeek + 1;
                 ghostTask.duration = newDuration;
             }
         } else {
-            const newDuration = currentWeek - resizingTask.originalStartWeek;
+            const newDuration = currentWeek - (resizingTask.originalStartWeek - 1);
             if (newDuration >= 0.5) {
                 ghostTask.startWeek = resizingTask.originalStartWeek;
                 ghostTask.duration = newDuration;
@@ -1251,7 +1263,7 @@ function handleCanvasMouseMove(e) {
             const weekWidth = chartWidth / totalWeeks;
             let newStartWeek = Math.round((x - projectLabelWidth - draggingTask.offsetX) / weekWidth);
             newStartWeek = Math.max(0, Math.min(newStartWeek, totalWeeks - task.duration));
-            task.startWeek = newStartWeek;
+            task.startWeek = newStartWeek + 1;
 
             // Calcular el destino potencial para el feedback visual.
             // Debe coincidir exactamente con el layout de drawProjects,
@@ -1548,7 +1560,7 @@ function drawTaskBar(task, project, y, projectIndex, rowIndex, taskIndex) {
     const taskEndX = startX + fullBarWidth;
     if (taskEndX < projectLabelWidth || startX > projectLabelWidth + chartWidth) return;
 
-    const hitbox = { x: Math.max(startX, projectLabelWidth), y: barY, width: fullBarWidth, height: barHeight, projectIndex, rowIndex, taskIndex };
+    const hitbox = { x: Math.max(startX, projectLabelWidth), y: barY, width: barWidth, height: barHeight, projectIndex, rowIndex, taskIndex };
 
     if (task.isMilestone) {
         const diamondSize = 20;
@@ -1857,16 +1869,7 @@ function drawCheckIcon(ctx, x, y, radius) {
 }
 
 function animate(currentTime) {
-    if (lastTime === 0) lastTime = currentTime;
-    const elapsedTime = currentTime - lastTime;
-    lastTime = currentTime;
-    if (animationProgress < 1) {
-        animationProgress = Math.min(1, animationProgress + elapsedTime / animationDuration);
-        draw();
-        requestAnimationFrame(animate);
-    } else {
-        draw();
-    }
+    draw();
 }
 
 function getStartDate() {
@@ -2097,8 +2100,11 @@ function exportToExcel() {
 
     for (let i = 0; i < totalWeeks; i++) {
         const weekMonth = scanDate.getMonth();
-        if (monthLabels.length === 0 || monthLabels[monthLabels.length - 1].month !== months[weekMonth]) {
-            monthLabels.push({ month: months[weekMonth], startWeek: i }); // 0-indexed
+        const shortYear = scanDate.getFullYear().toString().slice(-2);
+        const monthYearLabel = `${months[weekMonth]} '${shortYear}`;
+
+        if (monthLabels.length === 0 || monthLabels[monthLabels.length - 1].month !== monthYearLabel) {
+            monthLabels.push({ month: monthYearLabel, startWeek: i }); // 0-indexed
         }
         scanDate.setDate(scanDate.getDate() + 7);
     }
@@ -2118,7 +2124,13 @@ function exportToExcel() {
     const styleMap = []; // Guardará la info para colorear celdas
     let excelRowIndex = 2; // Empezamos después de las 2 cabeceras
 
-    projects.forEach(p => {
+    projects.forEach((p, index) => {
+        // Añadir una fila vacía separadora entre proyectos (excepto antes del primero)
+        if (index > 0) {
+            ws_data.push(Array(totalWeeks + 2).fill(''));
+            excelRowIndex++;
+        }
+
         p.tasksByRow.flat().forEach(task => {
             const taskRow = Array(totalWeeks + 2).fill('');
             taskRow[0] = p.name;
@@ -2139,6 +2151,21 @@ function exportToExcel() {
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     ws['!merges'] = merges;
 
+    // Aplicar negrita a las cabeceras (filas 0 y 1)
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let c = 0; c <= range.e.c; c++) {
+        for (let r = 0; r <= 1; r++) { // Filas 0 y 1 son cabeceras
+            const cellAddress = XLSX.utils.encode_cell({ r: r, c: c });
+            if (!ws[cellAddress]) continue;
+
+            // Asegurarnos de mantener cualquier estilo existente
+            if (!ws[cellAddress].s) ws[cellAddress].s = {};
+            if (!ws[cellAddress].s.font) ws[cellAddress].s.font = {};
+
+            ws[cellAddress].s.font.bold = true;
+        }
+    }
+
     // 4. APLICAR COLORES A LAS BARRAS DE TAREAS
     styleMap.forEach(item => {
         // La primera semana (startWeek) corresponde a la columna de la semana + 1 (por la columna Tarea)
@@ -2148,7 +2175,9 @@ function exportToExcel() {
             const colIndex = startCol + w;
             if (colIndex < totalWeeks + 2) {
                 const cellAddress = XLSX.utils.encode_cell({ r: item.rowIndex, c: colIndex });
-                if (!ws[cellAddress]) ws[cellAddress] = { v: '' }; // Crear celda si no existe
+                if (!ws[cellAddress]) ws[cellAddress] = { v: '', t: 's' }; // Crear celda vacía
+                else ws[cellAddress].v = ''; // Vaciar si existía algo
+
                 ws[cellAddress].s = {
                     fill: { fgColor: { rgb: item.color.replace('#', '') } }
                 };
