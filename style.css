@@ -1003,3 +1003,26 @@ footer {
         padding: 8px 12px;
     }
 }
+
+/* --- TOOLTIP DE SEMANA --- */
+.week-tooltip {
+    position: absolute;
+    background-color: rgba(30, 30, 30, 0.95);
+    color: #E0E0E0;
+    border: 1px solid #4A90E2;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    pointer-events: none;
+    z-index: 200;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+}
+
+.week-tooltip.visible {
+    opacity: 1;
+}

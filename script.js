@@ -49,18 +49,18 @@ const projectIconPadding = 20;
 
 const translations = {
     es: {
-        newBtn: "Nuevo", saveBtn: "Guardar", copyBtn: "Copiar", excelBtn: "Excel",
+        newBtn: "Nuevo", saveBtn: "Guardar", copyBtn: "Copiar", excelBtn: "Exportar",
         undoBtn: "Deshacer", redoBtn: "Rehacer", scheduleLabel: "Cronograma:",
         schedulePlaceholder: "Título del Cronograma", startLabel: "Inicio:",
         endLabel: "Fin:", themeLabel: "Tema:", langLabel: "Idioma:",
         themeDark: "Oscuro", themeLight: "Claro", themeModern: "Moderno", themeGray: "Gris",
-        addProjectBtn: "Añadir Proyecto", pasteExcelBtn: "Excel", importBtn: "Importar",
+        addProjectBtn: "Añadir Proyecto", pasteExcelBtn: "Excel", loadBtn: "Cargar", loadBtnTitle: "Cargar Cronograma",
         pasteInstructions: "Pega aquí tu tabla desde Excel (Proyecto en Columna A, Tarea en Columna B).",
         editTaskTitle: "Editar Tarea", taskNameLabel: "Tarea:", taskStartLabel: "Semana Inicio:",
         taskDurationLabel: "Duración (semanas):", taskTypeLabel: "Tipo:",
         taskTypeNormal: "Normal", taskTypeMilestone: "Hito", taskTextPositionLabel: "Posición Texto:",
         taskTextInside: "Dentro", taskTextOutside: "Fuera", taskColorLabel: "Color Tarea:",
-        deleteTaskBtn: "Eliminar Tarea", completeBtn: "Completar", uncompleteBtn: "Descompletar",
+        deleteTaskBtn: "Eliminar Tarea", completeBtn: "Completada", uncompleteBtn: "Descompletar",
         editProjectTitle: "Editar Proyecto", projectNameLabel: "Nombre del Proyecto:",
         projectColorLabel: "Color Proyecto:", deleteProjectBtn: "Eliminar Proyecto",
         months: ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"],
@@ -74,21 +74,21 @@ const translations = {
         newScheduleTitle: "Nuevo Cronograma", saveScheduleTitle: "Guardar Cronograma",
         copyImageTitle: "Copiar como Imagen", exportExcelTitle: "Exportar a Excel",
         undoTitle: "Deshacer (Ctrl+Z)", redoTitle: "Rehacer (Ctrl+Y)", resetColorTitle: "Restaurar color del proyecto",
-        addTaskAction: "+ Añadir tarea"
+        addTaskAction: "+ Añadir tarea", weekTooltipTo: " al ", acceptBtn: "Aceptar"
     },
     en: {
-        newBtn: "New", saveBtn: "Save", copyBtn: "Copy", excelBtn: "Excel",
+        newBtn: "New", saveBtn: "Save", copyBtn: "Copy", excelBtn: "Export",
         undoBtn: "Undo", redoBtn: "Redo", scheduleLabel: "Schedule:",
         schedulePlaceholder: "Schedule Title", startLabel: "Start:",
         endLabel: "End:", themeLabel: "Theme:", langLabel: "Language:",
         themeDark: "Dark", themeLight: "Light", themeModern: "Modern", themeGray: "Gray",
-        addProjectBtn: "Add Project", pasteExcelBtn: "Excel", importBtn: "Import",
+        addProjectBtn: "Add Project", pasteExcelBtn: "Excel", loadBtn: "Load", loadBtnTitle: "Load Schedule",
         pasteInstructions: "Paste your Excel table here (Project in Column A, Task in Column B).",
         editTaskTitle: "Edit Task", taskNameLabel: "Task Name:", taskStartLabel: "Start Week:",
         taskDurationLabel: "Duration (weeks):", taskTypeLabel: "Type:",
         taskTypeNormal: "Normal", taskTypeMilestone: "Milestone", taskTextPositionLabel: "Text Position:",
         taskTextInside: "Inside", taskTextOutside: "Outside", taskColorLabel: "Task Color:",
-        deleteTaskBtn: "Delete Task", completeBtn: "Complete", uncompleteBtn: "Uncomplete",
+        deleteTaskBtn: "Delete Task", completeBtn: "Completed", uncompleteBtn: "Uncomplete",
         editProjectTitle: "Edit Project", projectNameLabel: "Project Name:",
         projectColorLabel: "Project Color:", deleteProjectBtn: "Delete Project",
         months: ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"],
@@ -102,7 +102,7 @@ const translations = {
         newScheduleTitle: "New Schedule", saveScheduleTitle: "Save Schedule",
         copyImageTitle: "Copy as Image", exportExcelTitle: "Export to Excel",
         undoTitle: "Undo (Ctrl+Z)", redoTitle: "Redo (Ctrl+Y)", resetColorTitle: "Reset project color",
-        addTaskAction: "+ Add task"
+        addTaskAction: "+ Add task", weekTooltipTo: " to ", acceptBtn: "Accept"
     }
 };
 
@@ -202,6 +202,7 @@ window.addEventListener('load', () => {
 
     // Listeners para guardar y cargar
     document.getElementById('save-btn').addEventListener('click', saveSchedule);
+    document.getElementById('load-btn').addEventListener('click', () => document.getElementById('load-input').click());
     document.getElementById('load-input').addEventListener('change', loadSchedule);
     document.getElementById('copy-btn').addEventListener('click', copyChartToClipboard);
     document.getElementById('paste-table-btn').addEventListener('click', togglePasteArea);
@@ -223,6 +224,36 @@ window.addEventListener('load', () => {
         };
         if (!draggingTask && !resizingTask && !document.querySelector('.floating-input')) {
             draw();
+        }
+
+        // --- Tooltip de semana ---
+        const weekTooltip = document.getElementById('week-tooltip');
+        const mx = lastMousePosition.x;
+        const my = lastMousePosition.y;
+        const weekRow = headerHeight / 2 + 3; // Zona inferior del header donde están las semanas
+
+        if (my > weekRow && my < headerHeight && mx > projectLabelWidth) {
+            const dpr = ctx ? (ctx.getTransform().a || 1) : 1;
+            const logicalW = canvas.width / dpr;
+            const chartW = logicalW - projectLabelWidth;
+            const weekW = chartW / totalWeeks;
+            const weekIndex = Math.floor((mx - projectLabelWidth) / weekW);
+
+            if (weekIndex >= 0 && weekIndex < totalWeeks) {
+                const startDate = getStartDate();
+                const weekStart = new Date(startDate.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
+                const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+
+                const fmt = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+                weekTooltip.textContent = `${fmt(weekStart)}${getTranslation('weekTooltipTo')}${fmt(weekEnd)}`;
+                weekTooltip.style.left = (mx + 12) + 'px';
+                weekTooltip.style.top = (my + 12) + 'px';
+                weekTooltip.classList.add('visible');
+            } else {
+                weekTooltip.classList.remove('visible');
+            }
+        } else {
+            weekTooltip.classList.remove('visible');
         }
     });
 
@@ -799,17 +830,24 @@ function openProjectEditModal(projectIndex) {
     modal.querySelector('.modal-close-icon').onclick = closeProjectEditModal;
 
     document.getElementById('modal-project-delete-btn').onclick = () => {
-        if (confirm(`¿Estás seguro de que quieres eliminar el proyecto "${project.name}"?`)) {
+        if (confirm(getTranslation('confirmDeleteProject') + `\n\n"${project.name}"`)) {
             deleteProject(projectIndex);
             closeProjectEditModal();
         }
     };
+    document.getElementById('modal-project-accept-btn').onclick = closeProjectEditModal;
 
     const modalInputs = ['modal-project-name', 'modal-project-color'];
     modalInputs.forEach(id => {
         const input = document.getElementById(id);
         input.removeEventListener('input', updateProjectFromModal);
         input.addEventListener('input', updateProjectFromModal);
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                closeProjectEditModal();
+            }
+        };
     });
 }
 
@@ -839,11 +877,10 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
     if (!task) return;
 
     document.getElementById('modal-task-name').value = task.name;
-    document.getElementById('modal-start-week').value = task.startWeek;
-    document.getElementById('modal-duration').value = task.duration;
     document.getElementById('modal-task-type').value = task.isMilestone ? 'milestone' : 'normal';
     document.getElementById('modal-text-position').value = task.textPosition;
     document.getElementById('modal-task-color').value = task.color || projects[projectIndex].color;
+    document.getElementById('modal-task-completed').checked = !!task.completed;
 
     const modal = document.getElementById('task-modal');
     modal.style.display = 'flex';
@@ -851,25 +888,12 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
 
     modal.querySelector('.modal-close-icon').onclick = closeTaskModal;
 
-    const completeBtn = document.getElementById('modal-complete-btn');
-    const checkmarkSVG = `<svg width="18" height="18" viewBox="0 0 22 22" style="vertical-align: middle; margin-right: 5px; margin-bottom: 2px;">
-        <circle cx="11" cy="11" r="10" fill="#4CAF50" stroke="#FFFFFF" stroke-width="1.5"/>
-        <path d="M6.6 11 L9.9 14.85 L15.4 7.15" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-    </svg>`;
-    const btnText = task.completed ? getTranslation('uncompleteBtn') : getTranslation('completeBtn');
-    completeBtn.innerHTML = checkmarkSVG + btnText;
-    completeBtn.onclick = () => {
-        task.completed = !task.completed;
-        saveToHistory();
-        updatePreview();
-        closeTaskModal();
-    };
-
     document.getElementById('modal-delete-btn').onclick = () => {
-        if (confirm(`¿Estás seguro de que quieres eliminar la tarea "${task.name}"?`)) {
+        if (confirm(getTranslation('confirmDeleteTask') + `\n\n"${task.name}"`)) {
             deleteTask(projectIndex, rowIndex, taskIndex);
         }
     };
+    document.getElementById('modal-accept-btn').onclick = closeTaskModal;
 
     document.getElementById('modal-reset-color-btn').onclick = () => {
         const taskColorInput = document.getElementById('modal-task-color');
@@ -879,9 +903,17 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
         updatePreview();
     };
 
-    const modalInputs = ['modal-task-name', 'modal-start-week', 'modal-duration', 'modal-task-type', 'modal-text-position', 'modal-task-color'];
+    const modalInputs = ['modal-task-name', 'modal-task-type', 'modal-text-position', 'modal-task-color', 'modal-task-completed'];
     modalInputs.forEach(id => {
-        document.getElementById(id).oninput = updateTaskFromModal;
+        const el = document.getElementById(id);
+        el.onchange = id === 'modal-task-completed' ? () => { updateTaskFromModal(); saveToHistory(); } : updateTaskFromModal;
+        if (id !== 'modal-task-completed') el.oninput = updateTaskFromModal;
+        el.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                closeTaskModal();
+            }
+        };
     });
 }
 
@@ -895,26 +927,13 @@ function updateTaskFromModal() {
     const { project, row, task: taskIndex } = editingTask;
     if (project === -1) return;
 
-    let duration = parseFloat(document.getElementById('modal-duration').value) || 1;
-    if (duration < 0.5) {
-        duration = 0.5;
-        document.getElementById('modal-duration').value = 0.5;
-    }
-
-    let startWeek = parseInt(document.getElementById('modal-start-week').value) || 1;
-    if (startWeek < 1) {
-        startWeek = 1;
-        document.getElementById('modal-start-week').value = 1;
-    }
-
     const updatedTask = {
         ...projects[project].tasksByRow[row][taskIndex], // Mantener propiedades existentes como 'color' si no se cambia
         name: document.getElementById('modal-task-name').value.trim() || 'Tarea sin nombre',
-        startWeek: startWeek,
-        duration: duration,
         isMilestone: document.getElementById('modal-task-type').value === 'milestone',
         textPosition: document.getElementById('modal-text-position').value,
-        color: document.getElementById('modal-task-color').value
+        color: document.getElementById('modal-task-color').value,
+        completed: document.getElementById('modal-task-completed').checked
     };
 
     projects[project].tasksByRow[row][taskIndex] = updatedTask;

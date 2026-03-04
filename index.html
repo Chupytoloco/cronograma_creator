@@ -33,6 +33,12 @@
                     <span class="icon-btn-label" data-i18n="saveBtn">Guardar</span>
                 </div>
                 <div class="icon-btn-wrapper">
+                    <button id="load-btn" class="nice-button icon-button" title="Cargar Cronograma"
+                        data-i18n-title="loadBtnTitle">📂</button>
+                    <input type="file" id="load-input" style="display: none;" accept=".json">
+                    <span class="icon-btn-label" data-i18n="loadBtn">Cargar</span>
+                </div>
+                <div class="icon-btn-wrapper">
                     <button id="copy-btn" class="nice-button icon-button" title="Copiar como Imagen"
                         data-i18n-title="copyImageTitle">📋</button>
                     <span class="icon-btn-label" data-i18n="copyBtn">Copiar</span>
@@ -40,7 +46,7 @@
                 <div class="icon-btn-wrapper">
                     <button id="export-excel-btn" class="nice-button icon-button" title="Exportar a Excel"
                         data-i18n-title="exportExcelTitle">📊</button>
-                    <span class="icon-btn-label" data-i18n="excelBtn">Excel</span>
+                    <span class="icon-btn-label" data-i18n="excelBtn">Exportar</span>
                 </div>
                 <div class="icon-btn-wrapper">
                     <button id="undo-btn" class="nice-button icon-button" title="Deshacer (Ctrl+Z)"
@@ -92,16 +98,13 @@
 
         <div id="canvas-container">
             <canvas id="ganttCanvas"></canvas>
+            <div id="week-tooltip" class="week-tooltip"></div>
         </div>
 
         <div class="bottom-controls">
             <div>
                 <button id="add-project-btn" class="nice-button" data-i18n="addProjectBtn">Añadir Proyecto</button>
                 <button id="paste-table-btn" class="nice-button" data-i18n="pasteExcelBtn">Excel</button>
-            </div>
-            <div>
-                <label for="load-input" id="load-btn" class="nice-button" data-i18n="importBtn">Importar</label>
-                <input type="file" id="load-input" style="display: none;" accept=".json">
             </div>
         </div>
     </div>
@@ -128,16 +131,7 @@
             <label for="modal-task-name" data-i18n="taskNameLabel">Tarea:</label>
             <input type="text" id="modal-task-name" data-testid="task-name-input">
 
-            <div class="modal-row">
-                <div>
-                    <label for="modal-start-week" data-i18n="taskStartLabel">Semana Inicio:</label>
-                    <input type="number" id="modal-start-week" min="1" data-testid="task-start-week-input">
-                </div>
-                <div>
-                    <label for="modal-duration" data-i18n="taskDurationLabel">Duración (semanas):</label>
-                    <input type="number" id="modal-duration" min="0.5" step="0.5" data-testid="task-duration-input">
-                </div>
-            </div>
+
 
             <div class="modal-row">
                 <div>
@@ -165,13 +159,24 @@
                             data-testid="task-reset-color-btn" data-i18n-title="resetColorTitle">🔄</button>
                     </div>
                 </div>
+                <div>
+                    <label for="modal-task-completed" data-i18n="taskCompletedLabel"
+                        style="visibility: hidden;">Estado:</label>
+                    <div style="display: flex; align-items: center; height: 38px; gap: 8px;">
+                        <input type="checkbox" id="modal-task-completed" data-testid="task-completed-checkbox"
+                            style="width: 18px; height: 18px; margin: 0; cursor: pointer;">
+                        <label for="modal-task-completed"
+                            style="margin-bottom: 0; cursor: pointer; color: var(--text-color);"
+                            data-i18n="completeBtn">Completada</label>
+                    </div>
+                </div>
             </div>
 
-            <div class="modal-actions" style="display: flex; justify-content: space-between;">
+            <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center;">
                 <button id="modal-delete-btn" class="button-text-danger" data-testid="task-delete-btn"
-                    data-i18n="deleteTaskBtn">Eliminar Tarea</button>
-                <button id="modal-complete-btn" class="button-text-success" data-testid="task-complete-btn"
-                    data-task-completed="false" data-i18n="completeBtn">Completar</button>
+                    title="Eliminar Tarea" data-i18n-title="deleteTaskBtn">🗑️</button>
+                <button id="modal-accept-btn" class="nice-button" data-testid="task-accept-btn"
+                    data-i18n="acceptBtn">Aceptar</button>
             </div>
         </div>
     </div>
@@ -193,15 +198,20 @@
                 </div>
             </div>
 
-            <div class="modal-actions" style="display: flex; justify-content: flex-start;">
+            <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center;">
                 <button id="modal-project-delete-btn" class="button-text-danger" data-testid="project-delete-btn"
-                    data-i18n="deleteProjectBtn">Eliminar Proyecto</button>
+                    title="Eliminar Proyecto" data-i18n-title="deleteProjectBtn">🗑️</button>
+                <button id="modal-project-accept-btn" class="nice-button" data-testid="project-accept-btn"
+                    data-i18n="acceptBtn">Aceptar</button>
             </div>
         </div>
     </div>
 
-    <footer>
-        <p>Powered by juangenovardortiz@gmail.com</p>
+    <footer
+        style="display: flex; justify-content: space-between; width: 95%; max-width: 1600px; padding: 10px 20px; font-size: 0.9em; color: var(--text-color); opacity: 0.8;">
+        <span style="flex: 1;"></span>
+        <span style="flex: 1; text-align: center;">Powered by juangenovardortiz@gmail.com</span>
+        <span style="flex: 1; text-align: right;">v.2.0</span>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
