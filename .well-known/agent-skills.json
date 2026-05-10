@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "name": "Cronograma Creator Agent Skills",
+  "version": "4.0",
+  "description": "Skills that AI agents can perform with Cronograma Creator. The primary skill (create_timeline) uses a single public HTTP POST and requires no browser. The remaining skills are browser-side and require running the app (e.g. via Playwright).",
+  "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
+  "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
+  "stateSchema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json",
+  "skills": [
+    {
+      "name": "create_timeline",
+      "title": "Create a publicly-shareable Gantt timeline",
+      "description": "Builds a cronograma from a state object and stores it server-side. Returns a short URL the user can open in any browser to see the timeline. No authentication required.",
+      "transport": "http",
+      "method": "POST",
+      "endpoint": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+      "auth": "none",
+      "inputSchema": {
+        "type": "object",
+        "required": ["state"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "Optional title. Defaults to state.title or 'Cronograma'."
+          },
+          "state": {
+            "$ref": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["id", "url"],
+        "properties": {
+          "id": { "type": "string", "description": "10-char alphanumeric short id" },
+          "url": { "type": "string", "format": "uri", "description": "Full public URL the user can open" }
+        }
+      },
+      "errors": {
+        "400": "invalid JSON or invalid state",
+        "413": "state JSON exceeds 180 KB",
+        "429": "rate limit: 30 shares per IP per hour"
+      },
+      "rateLimit": "30 creations per IP per hour",
+      "lifetime": "Anonymous shares expire 90 days after creation."
+    },
+    {
+      "name": "validate_timeline_state",
+      "title": "Validate a cronograma state before submitting",
+      "description": "Runs the same validation the app performs, returning a list of errors. Available only when the app is open in a browser (Playwright/Puppeteer or headless).",
+      "transport": "browser-js",
+      "global": "window.CronogramaAPI",
+      "method": "validateState",
+      "arguments": [
+        {
+          "name": "stateObject",
+          "type": "object",
+          "schema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json",
+          "description": "Full cronograma state to validate"
+        }
+      ],
+      "output": {
+        "type": "object",
+        "properties": {
+          "valid": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "exampleCall": "const { valid, errors } = window.CronogramaAPI.validateState(state);"
+    },
+    {
+      "name": "export_share_url",
+      "title": "Get a stateless share URL (legacy hash form)",
+      "description": "Encodes the current state into the URL hash. Works fully offline but produces long URLs for non-trivial cronogramas. Prefer create_timeline for short URLs.",
+      "transport": "browser-js",
+      "global": "window.CronogramaAPI",
+      "method": "getShareUrl",
+      "arguments": [],
+      "output": {
+        "type": "string",
+        "format": "uri",
+        "description": "URL with #s=<base64-state> hash"
+      },
+      "exampleCall": "const url = window.CronogramaAPI.getShareUrl();"
+    },
+    {
+      "name": "export_png",
+      "title": "Render the current cronograma as a PNG image",
+      "description": "Returns the rendered Gantt chart as a base64 data URL. Useful for embedding in chat replies, sending as an image attachment, or saving locally.",
+      "transport": "browser-js",
+      "global": "window.CronogramaAPI",
+      "method": "getImageDataUrl",
+      "arguments": [],
+      "output": {
+        "type": "string",
+        "format": "data-url",
+        "description": "PNG image as base64 data URL (data:image/png;base64,...)"
+      },
+      "exampleCall": "const png = await window.CronogramaAPI.getImageDataUrl();",
+      "alternativeAutoexport": "Append ?autoexport=image to the URL to trigger this on page load. Result is also placed in #autoexport-result."
+    },
+    {
+      "name": "export_json",
+      "title": "Read the current cronograma state as JSON",
+      "description": "Returns the full state object for the cronograma currently rendered. Useful for round-tripping, archiving, or further editing.",
+      "transport": "browser-js",
+      "global": "window.CronogramaAPI",
+      "method": "getState",
+      "arguments": [],
+      "output": {
+        "type": "object",
+        "schema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json"
+      },
+      "exampleCall": "const state = window.CronogramaAPI.getState();",
+      "alternativeAutoexport": "Append ?autoexport=json to the URL to trigger this on page load. Result placed in #autoexport-result."
+    },
+    {
+      "name": "load_timeline",
+      "title": "Load a cronograma into an open browser page",
+      "description": "Applies a state object to the currently-open app (replacing whatever is on screen). Useful for headless flows where the agent constructs a state and wants to display/screenshot it.",
+      "transport": "browser-js",
+      "global": "window.CronogramaAPI",
+      "method": "createFromJSON",
+      "arguments": [
+        {
+          "name": "stateOrJSON",
+          "type": ["object", "string"],
+          "schema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json",
+          "description": "State object or JSON string"
+        }
+      ],
+      "output": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "errors": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "exampleCall": "window.CronogramaAPI.createFromJSON(state);"
+    },
+    {
+      "name": "self_test",
+      "title": "Run the in-app self-test",
+      "description": "Verifies the browser API methods are responding correctly. Useful as a smoke test before running a headless workflow.",
+      "transport": "browser-js",
+      "global": "window.CronogramaAPI",
+      "method": "selfTest",
+      "arguments": [],
+      "output": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "summary": { "type": "string" },
+          "passed": { "type": "array" },
+          "failed": { "type": "array" }
+        }
+      },
+      "exampleCall": "const results = await window.CronogramaAPI.selfTest();"
+    }
+  ],
+  "agentModeFlags": {
+    "?mode=agent": "Disables confirms, animations, and non-essential UI. Console logs prefixed [CronogramaAI].",
+    "?autoexport=url|image|json": "Auto-runs the corresponding export on page load and writes result JSON to #autoexport-result."
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Cronograma Creator",
+  "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
+  "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
+  "auth": {
+    "required": false,
+    "schemes": [],
+    "note": "Cronograma Creator is not an OAuth authorization server. This document exists so OAuth discovery scanners get an explicit machine-readable answer instead of a 404. No OAuth endpoints are exposed."
+  },
+  "protectedResources": [],
+  "note": "All documented APIs (HTTP share endpoint and browser JS API) are public and require no authentication. The optional in-app sign-in (Google via Supabase) is a private convenience for cloud-storing user-owned cronogramas and is not exposed as a public OAuth surface."
+}

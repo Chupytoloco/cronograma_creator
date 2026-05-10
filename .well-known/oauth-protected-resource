@@ -1,0 +1,33 @@
+{
+  "name": "Cronograma Creator",
+  "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
+  "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
+  "auth": {
+    "required": false,
+    "schemes": [],
+    "note": "No resource exposed by Cronograma Creator is OAuth-protected. This document exists so OAuth resource-discovery scanners get an explicit answer instead of a 404."
+  },
+  "publicResources": [
+    {
+      "id": "create-share",
+      "type": "http",
+      "method": "POST",
+      "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+      "auth": "none",
+      "rateLimit": "30 per IP per hour"
+    },
+    {
+      "id": "shared-schedule-read",
+      "type": "http",
+      "method": "GET",
+      "urlTemplate": "https://juangenovardortiz.github.io/cronograma_creator/?c=<short-id>",
+      "auth": "none"
+    },
+    {
+      "id": "browser-CronogramaAPI",
+      "type": "browser-javascript",
+      "global": "window.CronogramaAPI",
+      "auth": "none"
+    }
+  ]
+}

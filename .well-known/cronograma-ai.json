@@ -1,10 +1,65 @@
 {
   "name": "Cronograma Creator",
-  "version": "3.0",
-  "description": "Interactive Gantt chart / schedule builder. Fully operable by AI agents without human interaction.",
+  "version": "4.0",
+  "description": "Interactive Gantt chart / schedule builder. AI agents can build a schedule with a single HTTP POST and hand the user a short share URL — no browser, no auth required.",
   "url": "https://juangenovardortiz.github.io/cronograma_creator/",
   "instructions": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
   "schema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json",
+  "discovery": {
+    "robots": "https://juangenovardortiz.github.io/cronograma_creator/robots.txt",
+    "sitemap": "https://juangenovardortiz.github.io/cronograma_creator/sitemap.xml",
+    "agentSkills": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/agent-skills.json",
+    "apiCatalog": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/api-catalog.json",
+    "mcpServer": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/mcp-server.json",
+    "oauthAuthorizationServer": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/oauth-authorization-server",
+    "oauthProtectedResource": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/oauth-protected-resource"
+  },
+  "capabilities": [
+    "timeline-generation",
+    "share-url",
+    "export-image",
+    "export-json",
+    "agent-mode",
+    "headless-automation"
+  ],
+  "shareEndpoint": {
+    "method": "POST",
+    "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+    "contentType": "application/json",
+    "auth": "none",
+    "requestBody": {
+      "title": "string (optional, max 200 chars)",
+      "state": "object (see state.schema.json)"
+    },
+    "responseBody": {
+      "id": "string (10-char alphanumeric short id)",
+      "url": "string (full public URL)"
+    },
+    "errors": {
+      "400": "invalid JSON or invalid state",
+      "413": "state JSON > 180 KB",
+      "429": "rate limit: 30 shares per IP per hour"
+    },
+    "lifetime": "Anonymous shares expire 90 days after creation."
+  },
+  "shareUrlFormats": {
+    "shortId": "https://juangenovardortiz.github.io/cronograma_creator/?c=<short-id>",
+    "legacyHash": "https://juangenovardortiz.github.io/cronograma_creator/#s=<base64(JSON.stringify(state))>"
+  },
+  "urlParams": {
+    "c": {
+      "type": "string",
+      "description": "Short ID of a publicly-shared cronograma (created via the share endpoint). Loads it from Supabase on page load."
+    },
+    "autoexport": {
+      "values": ["url", "image", "json"],
+      "description": "Auto-export on page load. Result written to #autoexport-result as JSON."
+    },
+    "mode": {
+      "values": ["agent"],
+      "description": "Agent mode: disables modals, animations, and non-essential UI interactions. Deterministic render."
+    }
+  },
   "api": {
     "type": "browser-javascript",
     "global": "window.CronogramaAPI",
@@ -13,7 +68,7 @@
       { "name": "setState", "params": ["stateObject"], "description": "Load a schedule from object" },
       { "name": "createFromJSON", "params": ["jsonOrString"], "description": "Load a schedule from JSON string or object" },
       { "name": "loadFromJSON", "params": ["jsonOrString"], "description": "Alias for createFromJSON" },
-      { "name": "getShareUrl", "returns": "string", "description": "URL with #s= hash to share" },
+      { "name": "getShareUrl", "returns": "string", "description": "URL with #s= hash to share (legacy/stateless)" },
       { "name": "exportAsURL", "returns": "string", "description": "Alias for getShareUrl" },
       { "name": "getImageDataUrl", "returns": "Promise<string>", "description": "PNG as base64 data URL" },
       { "name": "exportAsImage", "returns": "Promise<string>", "description": "Alias for getImageDataUrl" },
@@ -21,20 +76,9 @@
       { "name": "selfTest", "returns": "Promise<object>", "description": "Run self-test and return results JSON" }
     ]
   },
-  "urlParams": {
-    "autoexport": {
-      "values": ["url", "image", "json"],
-      "description": "Auto-export on page load. Result written to #autoexport-result as JSON."
-    },
-    "mode": {
-      "values": ["agent"],
-      "description": "Agent mode: disables modals, animations, and non-essential UI interactions."
-    }
-  },
   "domElements": {
     "#app-test-state": "Always present. data-share-url, data-state (full JSON), data-image-ready attributes updated after every render.",
     "#autoexport-result": "Present after ?autoexport= param. Contains JSON result: { success, type, data }."
   },
-  "shareUrlFormat": "https://juangenovardortiz.github.io/cronograma_creator/#s=<btoa(unescape(encodeURIComponent(JSON.stringify(state))))>",
   "colorPalette": ["#6C8EBF", "#9B7EB8", "#D4915E", "#6BAF7B", "#C4A95B", "#5BA8A0", "#7EA3C9", "#B07DA5", "#C4956E", "#8BB5A2"]
 }

@@ -313,8 +313,21 @@ window.addEventListener('load', () => {
 
     // El orden correcto y único de inicialización
     populateMonthSelectors();
-    loadStateFromLocalStorage();
+    // ES: Si la URL trae ?c=ID (cronograma compartido por la nube), no cargamos
+    // localStorage para evitar el flash de un cronograma ajeno antes del fetch.
+    // EN: If URL has ?c=ID (cloud-shared schedule), skip localStorage to avoid
+    // flashing a different schedule before the async fetch resolves.
+    const shortShareIdMatch = location.search.match(/[?&]c=([A-Za-z0-9]{6,16})\b/);
+    if (!shortShareIdMatch) {
+        loadStateFromLocalStorage();
+    }
     loadFromShareUrl();
+    if (shortShareIdMatch) {
+        // Async: aplica el cronograma compartido cuando llegue de Supabase.
+        loadFromShortId().then(ok => {
+            if (!ok) loadStateFromLocalStorage();
+        });
+    }
     // Asegurar que el tema del selector siempre se aplique al body (incluido el caso "usuario nuevo" sin estado guardado).
     applyTheme(document.getElementById('theme-selector').value);
     applyLanguage(langSelector.value);
@@ -892,6 +905,52 @@ function loadFromShareUrl() {
         console.error('Error al cargar desde URL compartida:', e);
     }
 }
+
+// ES: Carga un cronograma público desde Supabase por ID corto (?c=XXXX).
+// EN: Loads a publicly-shared schedule from Supabase by short ID (?c=XXXX).
+// Usado por agentes IA y enlaces cortos generados por la Edge Function create-share.
+async function loadFromShortId() {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('c');
+    if (!id || !/^[A-Za-z0-9]{6,16}$/.test(id)) return false;
+
+    const cfg = window.__SUPABASE_CONFIG__;
+    if (!cfg || !cfg.url || !cfg.publishableKey || typeof window.supabase === 'undefined') {
+        console.warn('[share] Supabase no disponible para cargar cronograma:', id);
+        return false;
+    }
+
+    try {
+        const supa = window.supabase.createClient(cfg.url, cfg.publishableKey, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+        });
+        const { data, error } = await supa
+            .from('shared_schedules')
+            .select('title, state')
+            .eq('id', id)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) {
+            console.warn('[share] Cronograma no encontrado o expirado:', id);
+            return false;
+        }
+        const stateObj = (data.state && typeof data.state === 'object') ? { ...data.state } : {};
+        if (data.title && !stateObj.title) stateObj.title = data.title;
+        // El cronograma compartido no debe sobrescribir tema/idioma del visitante.
+        delete stateObj.theme;
+        delete stateObj.lang;
+        applyState(stateObj);
+        resetHistory();
+        // Limpia el query param para que recargar (F5) no vuelva a forzar el fetch.
+        const cleanUrl = location.origin + location.pathname + location.hash;
+        window.history.replaceState(null, '', cleanUrl);
+        return true;
+    } catch (e) {
+        console.error('[share] Error al cargar cronograma compartido:', e);
+        return false;
+    }
+}
+window.loadFromShortId = loadFromShortId;
 
 function saveStateToLocalStorage() {
     try {

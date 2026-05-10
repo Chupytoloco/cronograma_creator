@@ -1,0 +1,28 @@
+{
+  "name": "Cronograma Creator",
+  "version": "4.0",
+  "description": "Cronograma Creator does NOT expose a remote Model Context Protocol (MCP) server. This document exists so that MCP discovery scanners get an explicit, machine-readable answer instead of a 404.",
+  "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
+  "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
+  "mcp": {
+    "available": false,
+    "transports": [],
+    "reason": "Cronograma Creator runs entirely client-side on GitHub Pages plus a single public HTTP endpoint on Supabase Edge Functions. There is no stateful backend to host an MCP server on. AI agents should integrate via the public HTTP endpoint and the browser JS API listed below."
+  },
+  "integrationsForAgents": {
+    "primary": {
+      "type": "http",
+      "method": "POST",
+      "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+      "description": "Create a cronograma and receive a short share URL. See /.well-known/api-catalog.json for full schema."
+    },
+    "browserJs": {
+      "type": "browser-javascript",
+      "global": "window.CronogramaAPI",
+      "loadVia": "Open the app URL (optionally with ?mode=agent) in a browser or via Playwright/Puppeteer.",
+      "catalog": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/api-catalog.json",
+      "skills": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/agent-skills.json"
+    }
+  },
+  "futureWork": "If a hosted MCP server is added, this document will be updated to advertise its transport (http/sse, streamable-http) and base URL."
+}

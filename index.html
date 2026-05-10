@@ -11,7 +11,16 @@
     <meta name="description" content="Interactive Gantt chart builder. AI agents: see /llms.txt for full API documentation.">
     <meta name="ai:docs" content="/cronograma_creator/llms.txt">
     <meta name="ai:capabilities" content="timeline-generation, export-image, share-url, export-json, agent-mode">
+
+    <!-- Discovery: agent + crawler friendly. Use absolute URLs so scanners on
+         any path resolve correctly. -->
     <link rel="alternate" type="text/plain" href="llms.txt" title="AI Instructions">
+    <link rel="sitemap" type="application/xml" href="sitemap.xml" title="Sitemap">
+    <link rel="describedby" type="application/schema+json" href="state.schema.json" title="Cronograma State Schema">
+    <link rel="service" type="application/json" href=".well-known/cronograma-ai.json" title="Cronograma AI manifest">
+    <link rel="service" type="application/json" href=".well-known/agent-skills.json" title="Agent Skills">
+    <link rel="service" type="application/json" href=".well-known/api-catalog.json" title="API Catalog">
+
     <link rel="stylesheet" href="style.css" id="main-stylesheet">
     <script type="application/ld+json">
     {
@@ -21,7 +30,18 @@
       "description": "Generate, visualize and export project timelines as Gantt charts. Fully operable by AI agents.",
       "url": "https://juangenovardortiz.github.io/cronograma_creator/",
       "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
-      "termsOfService": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json"
+      "termsOfService": "https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json",
+      "potentialAction": {
+        "@type": "CreateAction",
+        "name": "Create a publicly-shareable cronograma",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+          "encodingType": "application/json",
+          "httpMethod": "POST",
+          "contentType": "application/json"
+        }
+      }
     }
     </script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
@@ -378,7 +398,7 @@
                title="AI Agent API documentation">🤖 AI API</a>
         </span>
         <span style="flex: 1; text-align: center;">Powered by juangenovardortiz@gmail.com</span>
-        <span style="flex: 1; text-align: right;">v.3.11</span>
+        <span style="flex: 1; text-align: right;">v.4.1</span>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>

@@ -1,0 +1,113 @@
+{
+  "name": "Cronograma Creator API Catalog",
+  "version": "4.0",
+  "description": "Cronograma Creator exposes two API surfaces: (1) a single public HTTP endpoint to mint short share URLs, and (2) a browser-side JavaScript API available on window.CronogramaAPI when the app is loaded.",
+  "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
+  "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
+  "stateSchema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json",
+  "apis": [
+    {
+      "id": "create-share",
+      "type": "http",
+      "title": "Create publicly-shareable cronograma",
+      "description": "POST a cronograma state and receive a short URL. No auth. Rate-limited per IP.",
+      "method": "POST",
+      "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+      "contentType": "application/json",
+      "auth": "none",
+      "request": {
+        "body": {
+          "title": { "type": "string", "required": false, "maxLength": 200 },
+          "state": { "type": "object", "required": true, "schemaRef": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json" }
+        }
+      },
+      "response": {
+        "200": { "id": "string", "url": "string (full public URL)" },
+        "400": { "error": "string — invalid JSON or invalid state" },
+        "413": { "error": "string — state too large (>180 KB)" },
+        "429": { "error": "string — rate limit (30/hr per IP)" }
+      }
+    },
+    {
+      "id": "browser-CronogramaAPI",
+      "type": "browser-javascript",
+      "title": "In-page JavaScript API",
+      "description": "Available on window.CronogramaAPI once the app is loaded. Use via Playwright/Puppeteer or directly from devtools.",
+      "global": "window.CronogramaAPI",
+      "loadVia": [
+        "Open https://juangenovardortiz.github.io/cronograma_creator/ in a browser (or page.goto in Playwright/Puppeteer).",
+        "Optional: append ?mode=agent for deterministic, side-effect-free behavior."
+      ],
+      "methods": [
+        {
+          "name": "createFromJSON",
+          "signature": "createFromJSON(stateOrJSON: object | string) => { success: boolean, errors?: string[] }",
+          "description": "Loads a schedule from a state object or JSON string. Replaces what is currently on screen.",
+          "example": "CronogramaAPI.createFromJSON({ title: 'X', startMonth: '0', endMonth: '5', projects: [...] });"
+        },
+        {
+          "name": "setState",
+          "signature": "setState(stateObject: object) => void",
+          "description": "Alias for createFromJSON when input is guaranteed to be an object.",
+          "example": "CronogramaAPI.setState(state);"
+        },
+        {
+          "name": "getState",
+          "signature": "getState() => object",
+          "description": "Returns the full state object for the cronograma currently rendered. Conforms to state.schema.json.",
+          "example": "const state = CronogramaAPI.getState();"
+        },
+        {
+          "name": "getShareUrl",
+          "signature": "getShareUrl() => string",
+          "description": "Builds the legacy stateless share URL (#s=<base64>). For short URLs, use the HTTP endpoint above.",
+          "example": "const url = CronogramaAPI.getShareUrl();"
+        },
+        {
+          "name": "exportAsURL",
+          "signature": "exportAsURL() => string",
+          "description": "Alias for getShareUrl.",
+          "example": "const url = CronogramaAPI.exportAsURL();"
+        },
+        {
+          "name": "getImageDataUrl",
+          "signature": "getImageDataUrl() => Promise<string>",
+          "description": "Renders the cronograma to a PNG and returns a base64 data URL.",
+          "example": "const png = await CronogramaAPI.getImageDataUrl();"
+        },
+        {
+          "name": "exportAsImage",
+          "signature": "exportAsImage() => Promise<string>",
+          "description": "Alias for getImageDataUrl.",
+          "example": "const png = await CronogramaAPI.exportAsImage();"
+        },
+        {
+          "name": "validateState",
+          "signature": "validateState(stateObject: object) => { valid: boolean, errors: string[] }",
+          "description": "Returns true with empty errors if state is valid; otherwise lists problems.",
+          "example": "const { valid, errors } = CronogramaAPI.validateState(state);"
+        },
+        {
+          "name": "selfTest",
+          "signature": "selfTest() => Promise<{ success: boolean, summary: string, passed: object[], failed: object[] }>",
+          "description": "Runs an in-page self-test and returns a structured report.",
+          "example": "const r = await CronogramaAPI.selfTest();"
+        }
+      ],
+      "urlParams": {
+        "?c=<short-id>": "Load a publicly-shared cronograma by its short id.",
+        "#s=<base64>": "Load a cronograma encoded directly in the hash (legacy).",
+        "?mode=agent": "Agent mode: no confirms, deterministic render, console logs prefixed [CronogramaAI].",
+        "?autoexport=url|image|json": "Auto-run the corresponding export on page load and write result JSON to #autoexport-result."
+      },
+      "domHooks": {
+        "#app-test-state": "data-share-url, data-state (JSON), data-image-ready set after every render.",
+        "#autoexport-result": "Present after ?autoexport=. Contains { success, type, data } as JSON in dataset.result."
+      }
+    }
+  ],
+  "auth": {
+    "required": false,
+    "note": "All documented endpoints are public. The optional sign-in (Google via Supabase) only affects per-user cloud persistence inside the app and is never required to create, view, or share a cronograma."
+  }
+}

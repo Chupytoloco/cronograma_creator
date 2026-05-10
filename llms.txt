@@ -1,137 +1,138 @@
 # Cronograma Creator — AI Agent Instructions
 
-> Version: 3.0
-> URL: https://juangenovardortiz.github.io/cronograma_creator/
-> Schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
-> Well-known: https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json
+> Version: 4.1
+> App URL: https://juangenovardortiz.github.io/cronograma_creator/
+> Share endpoint: https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
+> State schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
+> Well-known manifest: https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json
 
-Cronograma Creator is an interactive Gantt chart builder that runs entirely in the browser.
-AI agents can create, load, and export schedules **without any human interaction**, using three approaches described below.
+Cronograma Creator is an interactive Gantt chart builder. AI agents can build a schedule and hand the user a short share URL with **one HTTP request** — no browser, no auth, no client SDK required.
 
 ---
 
-## QUICK START — Generate a share URL without a browser
+## QUICK START — One HTTP request, one short URL
 
-This is the fastest method. No browser or API needed.
+POST the cronograma state to the public share endpoint. You get back a short URL the user can open immediately.
 
-```javascript
-// 1. Build the state object
-const state = {
+```http
+POST https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
+Content-Type: application/json
+
+{
   "title": "Q2 Roadmap",
-  "startMonth": "0",        // 0 = January
-  "endMonth": "5",          // 5 = June
-  "theme": "oscuro",        // oscuro | claro | moderno | gris
-  "lang": "en",             // en | es
-  "projects": [
-    {
-      "name": "Design",
-      "color": "#5B8CC8",
-      "tasksByRow": [
-        [
-          {
-            "name": "Research",
-            "startWeek": 1,
-            "duration": 3,
-            "isMilestone": false,
-            "textPosition": "outside",
-            "compact": false,
-            "completed": false,
-            "color": null
-          }
-        ],
-        [
-          {
-            "name": "Wireframes",
-            "startWeek": 4,
-            "duration": 4,
-            "isMilestone": false,
-            "textPosition": "inside",
-            "compact": false,
-            "completed": false,
-            "color": null
-          }
+  "state": {
+    "title": "Q2 Roadmap",
+    "startMonth": "0",
+    "endMonth": "5",
+    "theme": "claro",
+    "lang": "es",
+    "projects": [
+      {
+        "name": "Diseño",
+        "color": "#5B8CC8",
+        "tasksByRow": [
+          [{ "name": "Research",   "startWeek": 1, "duration": 3 }],
+          [{ "name": "Wireframes", "startWeek": 4, "duration": 4 }]
         ]
-      ]
-    },
-    {
-      "name": "Development",
-      "color": "#2E9E58",
-      "tasksByRow": [
-        [
-          {
-            "name": "Backend API",
-            "startWeek": 5,
-            "duration": 8,
-            "isMilestone": false,
-            "textPosition": "inside",
-            "compact": false,
-            "completed": false,
-            "color": null
-          }
-        ],
-        [
-          {
-            "name": "Frontend",
-            "startWeek": 9,
-            "duration": 6,
-            "isMilestone": false,
-            "textPosition": "inside",
-            "compact": false,
-            "completed": false,
-            "color": null
-          }
-        ],
-        [
-          {
-            "name": "Launch",
-            "startWeek": 15,
-            "duration": 1,
-            "isMilestone": true,
-            "textPosition": "outside",
-            "compact": false,
-            "completed": false,
-            "color": null
-          }
+      },
+      {
+        "name": "Desarrollo",
+        "color": "#2E9E58",
+        "tasksByRow": [
+          [{ "name": "Backend",  "startWeek": 5,  "duration": 8 }],
+          [{ "name": "Frontend", "startWeek": 9,  "duration": 6 }],
+          [{ "name": "Launch",   "startWeek": 15, "duration": 1, "isMilestone": true }]
         ]
-      ]
-    }
-  ]
-};
-
-// 2. Encode it
-const hash = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
-
-// 3. Build the URL
-const url = `https://juangenovardortiz.github.io/cronograma_creator/#s=${hash}`;
-
-// → Share this URL. It opens the schedule instantly in any browser.
+      }
+    ]
+  }
+}
 ```
 
-**Python equivalent:**
+**Response (200 OK):**
+```json
+{
+  "id": "aB3xK9mP2q",
+  "url": "https://juangenovardortiz.github.io/cronograma_creator/?c=aB3xK9mP2q"
+}
+```
+
+Give the user the `url`. Opening it loads the cronograma instantly in any browser.
+
+### Language examples
+
+**curl:**
+```bash
+curl -X POST https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share \
+  -H 'Content-Type: application/json' \
+  -d '{"title":"My Plan","state":{ ... }}'
+```
+
+**JavaScript / Node:**
+```javascript
+const res = await fetch(
+  'https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share',
+  {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ title: 'My Plan', state })
+  }
+);
+const { url } = await res.json();
+console.log(url);
+```
+
+**Python:**
 ```python
-import json, base64
-encoded = base64.b64encode(json.dumps(state, ensure_ascii=False).encode('utf-8')).decode('utf-8')
-url = f"https://juangenovardortiz.github.io/cronograma_creator/#s={encoded}"
+import requests
+r = requests.post(
+    'https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share',
+    json={'title': 'My Plan', 'state': state},
+    timeout=10,
+)
+print(r.json()['url'])
 ```
 
-> Note: Python uses standard base64 without `unescape/encodeURIComponent`. Use UTF-8 encoding.
+---
+
+## ENDPOINT REFERENCE
+
+### `POST /functions/v1/create-share`
+
+| Header | Required | Value |
+|---|---|---|
+| `Content-Type` | yes | `application/json` |
+
+| Body field | Type | Required | Notes |
+|---|---|---|---|
+| `state` | object | yes | Full cronograma state — see schema below |
+| `title` | string | no | Title shown in UI. Defaults to `state.title` or `"Cronograma"`. Max 200 chars |
+
+| Response | Body |
+|---|---|
+| `200 OK` | `{ "id": "<short-id>", "url": "<full URL>" }` |
+| `400 Bad Request` | `{ "error": "<reason>" }` — invalid JSON or invalid state |
+| `413 Payload Too Large` | state JSON > 180 KB |
+| `429 Too Many Requests` | rate limit: max 30 shares per IP per hour |
+
+**Lifecycle:** Anonymous shares expire 90 days after creation. No auth required to create or read.
 
 ---
 
 ## STATE SCHEMA
 
-Full JSON Schema available at: `state.schema.json`
+Canonical JSON Schema: [`state.schema.json`](state.schema.json)
 
 ### Top-level fields
 
 | Field | Type | Required | Values |
 |---|---|---|---|
 | `title` | string | yes | Any text |
-| `startMonth` | string or int | yes | 0–11 (0=Jan, 11=Dec) |
-| `endMonth` | string or int | yes | 0–11, must be >= startMonth |
-| `theme` | string | yes | `"oscuro"` `"claro"` `"moderno"` `"gris"` |
-| `lang` | string | yes | `"es"` `"en"` |
-| `projects` | array | yes | See below |
+| `startMonth` | string or int | yes | `"0"`–`"11"` (`0` = January) |
+| `endMonth` | string or int | yes | `"0"`–`"11"`, must be ≥ `startMonth` |
+| `theme` | string | no | `"claro"` `"oscuro"` `"moderno"` `"gris"` |
+| `lang` | string | no | `"es"` `"en"` |
+| `projects` | array | yes | At least 1, max 100 — see below |
 
 ### Project fields
 
@@ -139,224 +140,132 @@ Full JSON Schema available at: `state.schema.json`
 |---|---|---|---|
 | `name` | string | yes | Group label |
 | `color` | string | yes | Hex color e.g. `"#5B8CC8"` |
-| `compact` | boolean | no | Smaller row height for all tasks |
-| `tasksByRow` | array of arrays | yes | Each inner array = one visual row |
+| `compact` | boolean | no | Smaller row height for the whole project |
+| `tasksByRow` | array of arrays | yes | Each inner array = one visual row (tasks in same row may overlap) |
 
 ### Task fields
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
 | `name` | string | yes | Task label |
-| `startWeek` | integer ≥ 1 | yes | 1 = first week of startMonth |
+| `startWeek` | integer ≥ 1 | yes | `1` = first week of `startMonth` |
 | `duration` | integer ≥ 1 | yes | Duration in weeks |
-| `isMilestone` | boolean | no | Diamond shape; use duration=1 |
+| `isMilestone` | boolean | no | Diamond shape; use `duration: 1` |
 | `textPosition` | string | no | `"inside"` or `"outside"` |
-| `compact` | boolean | no | Smaller row height |
+| `compact` | boolean | no | Smaller row height for this task |
 | `completed` | boolean | no | Strikethrough style |
-| `color` | string or null | no | Hex override; null = project color |
+| `color` | string \| null | no | Hex override; `null` = inherit project color |
+| `description` | string | no | Notes shown in the edit modal, max 500 chars |
 
 ### Default color palette (cycle order)
 `#6C8EBF` `#9B7EB8` `#D4915E` `#6BAF7B` `#C4A95B` `#5BA8A0` `#7EA3C9` `#B07DA5` `#C4956E` `#8BB5A2`
 
 ---
 
-## JAVASCRIPT API (browser / headless)
+## LEGACY: stateless hash URL (still supported)
 
-When the page is open in a browser, use `window.CronogramaAPI`:
+For environments where you can't make an HTTP request, the original method still works — encode the state as base64 and append it to the URL hash:
 
 ```javascript
-// Load a schedule
-CronogramaAPI.createFromJSON(stateObjectOrJSONString);
-// or
-CronogramaAPI.setState(stateObject);
-
-// Get the share URL
-const url = CronogramaAPI.getShareUrl();       // also: exportAsURL()
-
-// Get a PNG image (base64 data URL)
-const png = await CronogramaAPI.getImageDataUrl();  // also: exportAsImage()
-
-// Read current state
-const state = CronogramaAPI.getState();
-
-// Validate a state object before loading
-const { valid, errors } = CronogramaAPI.validateState(myState);
-
-// Run self-test
-const results = await CronogramaAPI.selfTest();
-// → { success: true, passed: [...], failed: [...], summary: "9 passed, 0 failed" }
+const hash = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
+const url = `https://juangenovardortiz.github.io/cronograma_creator/#s=${hash}`;
 ```
 
-### Headless workflow (Playwright / Puppeteer / browser-use)
+```python
+import json, base64
+encoded = base64.b64encode(json.dumps(state, ensure_ascii=False).encode('utf-8')).decode('utf-8')
+url = f"https://juangenovardortiz.github.io/cronograma_creator/#s={encoded}"
+```
+
+Tradeoff: URLs become very long for non-trivial cronogramas. Prefer the POST endpoint above.
+
+---
+
+## BROWSER API (optional)
+
+When the page is already open in a browser, `window.CronogramaAPI` is available:
 
 ```javascript
-const page = await browser.newPage();
+CronogramaAPI.createFromJSON(state);           // load a state
+CronogramaAPI.getState();                      // read current state
+const url = CronogramaAPI.getShareUrl();       // get the legacy #s= URL
+const png = await CronogramaAPI.getImageDataUrl(); // PNG as data URL
+const { valid, errors } = CronogramaAPI.validateState(state);
+```
 
-// Option A: load a pre-built state URL
-await page.goto('https://juangenovardortiz.github.io/cronograma_creator/#s=<base64hash>');
+### Headless workflows (Playwright / Puppeteer)
 
-// Option B: inject state after loading
+```javascript
+// Option A: open a short share URL
+await page.goto('https://juangenovardortiz.github.io/cronograma_creator/?c=<short-id>');
+
+// Option B: open with mode=agent and inject state directly
 await page.goto('https://juangenovardortiz.github.io/cronograma_creator/?mode=agent');
-await page.evaluate((state) => CronogramaAPI.createFromJSON(state), myState);
-
-// Get share URL
-const shareUrl = await page.evaluate(() => CronogramaAPI.getShareUrl());
-
-// Get PNG image as data URL
-const imageDataUrl = await page.evaluate(async () => await CronogramaAPI.getImageDataUrl());
-// imageDataUrl = "data:image/png;base64,..." → decode bytes for the actual PNG
-
-// Run self-test
-const testResults = await page.evaluate(async () => await CronogramaAPI.selfTest());
+await page.evaluate((s) => CronogramaAPI.createFromJSON(s), state);
+const png = await page.evaluate(() => CronogramaAPI.getImageDataUrl());
 ```
 
 ---
 
 ## URL PARAMETERS
 
-All parameters work together. Example: `?mode=agent&autoexport=url#s=<hash>`
+All parameters can be combined.
 
-### `?mode=agent`
-
-Activates agent mode:
-- Confirms suppressed (auto-approved)
-- Alerts logged to console instead of blocking
-- Deterministic render (no animations)
-- Console logs prefixed with `[CronogramaAI]`
-
-### `?autoexport=url`
-
-On page load, generates the share URL and writes to `#autoexport-result`:
-```json
-{ "success": true, "type": "url", "data": "https://.../#s=..." }
-```
-Also shows the URL visually at the top of the page.
-
-### `?autoexport=image`
-
-On page load, generates the PNG and writes to `#autoexport-result`:
-```json
-{ "success": true, "type": "image", "data": "data:image/png;base64,..." }
-```
-Also triggers a file download (suppressed in agent mode).
-
-### `?autoexport=json`
-
-On page load, writes the full state JSON to `#autoexport-result`:
-```json
-{ "success": true, "type": "json", "data": { "title": "...", "projects": [...] } }
-```
+| Param | Effect |
+|---|---|
+| `?c=<short-id>` | Load a publicly-shared cronograma by its short ID |
+| `#s=<base64>` | Load a cronograma encoded directly in the hash (legacy) |
+| `?mode=agent` | Agent mode: suppresses confirms, deterministic render, console logs prefixed `[CronogramaAI]` |
+| `?autoexport=url` | On load, writes `{success, type, data}` to `#autoexport-result` with the share URL |
+| `?autoexport=image` | On load, writes `{success, type, data}` with a PNG data URL |
+| `?autoexport=json` | On load, writes the full state JSON |
 
 ---
 
-## DOM ELEMENTS ALWAYS AVAILABLE
+## DOM HOOKS FOR TESTING
 
-After every render, these DOM elements are updated automatically:
-
-### `#app-test-state`
+After every render:
 
 ```javascript
-document.getElementById('app-test-state').dataset.shareUrl   // share URL string
+document.getElementById('app-test-state').dataset.shareUrl   // legacy share URL
 document.getElementById('app-test-state').dataset.state      // full state as JSON string
 document.getElementById('app-test-state').dataset.imageReady // "true" after first render
-document.getElementById('app-test-state').innerText          // JSON: { state, shareUrl, imageReady }
 ```
 
-### `#autoexport-result`
+When using `?autoexport=`:
 
-Present after any `?autoexport=` param:
 ```javascript
-const result = JSON.parse(document.getElementById('autoexport-result').dataset.result);
-// { success: true, type: "url"|"image"|"json", data: ... }
+JSON.parse(document.getElementById('autoexport-result').dataset.result);
+// { success: true, type: "url" | "image" | "json", data: ... }
 ```
 
 ---
 
-## COMPLETE WORKED EXAMPLE (copy-paste)
+## DISCOVERY FILES
 
-Goal: create a 6-month software project schedule and get a share URL.
+For agents, crawlers, and scanners that probe well-known paths, the following discovery documents are published alongside this file:
 
-```javascript
-// JavaScript — runs in browser console or Playwright/Puppeteer
+| Path | Purpose |
+|---|---|
+| [`/llms.txt`](https://juangenovardortiz.github.io/cronograma_creator/llms.txt) | This document. Primary agent-readable spec. |
+| [`/robots.txt`](https://juangenovardortiz.github.io/cronograma_creator/robots.txt) | Crawler policy, including AI-bot rules and Cloudflare-style Content-Signal (`search=yes, ai-input=yes, ai-train=no`). |
+| [`/sitemap.xml`](https://juangenovardortiz.github.io/cronograma_creator/sitemap.xml) | Sitemap covering the app, `llms.txt`, and `state.schema.json`. |
+| [`/state.schema.json`](https://juangenovardortiz.github.io/cronograma_creator/state.schema.json) | JSON Schema (draft-07) for the cronograma state object. |
+| [`/.well-known/cronograma-ai.json`](https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json) | Top-level AI manifest. Lists capabilities, URL params, browser API and the share endpoint. |
+| [`/.well-known/agent-skills.json`](https://juangenovardortiz.github.io/cronograma_creator/.well-known/agent-skills.json) | Structured skills agents can perform (`create_timeline`, `validate_timeline_state`, `export_share_url`, `export_png`, `export_json`, `load_timeline`, `self_test`) with input/output schemas. |
+| [`/.well-known/api-catalog.json`](https://juangenovardortiz.github.io/cronograma_creator/.well-known/api-catalog.json) | Catalog of all callable APIs: the public HTTP share endpoint and the browser-side `window.CronogramaAPI` surface. |
+| [`/.well-known/mcp-server.json`](https://juangenovardortiz.github.io/cronograma_creator/.well-known/mcp-server.json) | Explicit declaration that no remote MCP server is hosted. Points scanners to the HTTP endpoint and browser JS API instead. |
+| [`/.well-known/oauth-authorization-server`](https://juangenovardortiz.github.io/cronograma_creator/.well-known/oauth-authorization-server) | Explicit declaration that no OAuth authorization server is exposed. |
+| [`/.well-known/oauth-protected-resource`](https://juangenovardortiz.github.io/cronograma_creator/.well-known/oauth-protected-resource) | Explicit declaration that no resource here is OAuth-protected; all public endpoints listed. |
 
-const state = {
-  title: "App Launch Plan",
-  startMonth: "0", endMonth: "5",
-  theme: "oscuro", lang: "en",
-  projects: [
-    {
-      name: "Planning", color: "#5B8CC8",
-      tasksByRow: [
-        [{ name: "Requirements", startWeek: 1, duration: 2, isMilestone: false, textPosition: "outside", compact: false, completed: false, color: null }],
-        [{ name: "Architecture", startWeek: 3, duration: 2, isMilestone: false, textPosition: "outside", compact: false, completed: false, color: null }],
-        [{ name: "Kickoff", startWeek: 5, duration: 1, isMilestone: true, textPosition: "outside", compact: false, completed: false, color: null }]
-      ]
-    },
-    {
-      name: "Development", color: "#2E9E58",
-      tasksByRow: [
-        [{ name: "Sprint 1", startWeek: 5, duration: 4, isMilestone: false, textPosition: "inside", compact: false, completed: true, color: null }],
-        [{ name: "Sprint 2", startWeek: 9, duration: 4, isMilestone: false, textPosition: "inside", compact: false, completed: false, color: null }],
-        [{ name: "Sprint 3", startWeek: 13, duration: 4, isMilestone: false, textPosition: "inside", compact: false, completed: false, color: null }]
-      ]
-    },
-    {
-      name: "QA & Launch", color: "#C97838",
-      tasksByRow: [
-        [{ name: "Testing", startWeek: 17, duration: 3, isMilestone: false, textPosition: "outside", compact: false, completed: false, color: null }],
-        [{ name: "Launch", startWeek: 20, duration: 1, isMilestone: true, textPosition: "outside", compact: false, completed: false, color: "#B84848" }]
-      ]
-    }
-  ]
-};
-
-// Option A: get URL directly (no browser needed)
-const hash = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
-const shareUrl = `https://juangenovardortiz.github.io/cronograma_creator/#s=${hash}`;
-console.log(shareUrl);
-
-// Option B: use the API in browser
-CronogramaAPI.createFromJSON(state);
-const shareUrl2 = CronogramaAPI.getShareUrl();
-const imageDataUrl = await CronogramaAPI.getImageDataUrl();
-```
-
----
-
-## VALIDATION
-
-Always validate before loading to catch errors early:
-
-```javascript
-const { valid, errors } = CronogramaAPI.validateState(myState);
-if (!valid) {
-  console.error('Invalid state:', errors);
-  // errors example: ["projects[0].tasksByRow[0][0].startWeek must be integer >= 1"]
-}
-```
-
----
-
-## SELF-TEST
-
-Verify the API is working correctly:
-
-```javascript
-const results = await CronogramaAPI.selfTest();
-// {
-//   success: true,
-//   summary: "9 passed, 0 failed",
-//   passed: [{ test: "createFromJSON", detail: undefined }, ...],
-//   failed: []
-// }
-```
+**Note on content negotiation:** GitHub Pages does not perform content negotiation. There is no HTML-vs-JSON variant of any resource — each URL above returns exactly the file at that path. `llms.txt` is the canonical agent-readable representation; the JSON manifests under `.well-known/` are machine-readable summaries cross-referencing this file.
 
 ---
 
 ## NOTES
 
 - `startWeek` is 1-based. Week 1 = first Monday of `startMonth`.
-- Tasks in the same inner array of `tasksByRow` share a horizontal row and can overlap visually.
+- Tasks in the same inner array of `tasksByRow` share a horizontal row and may overlap visually.
 - `color: null` on a task means it inherits the project color.
-- The app auto-saves to `localStorage`. Use `?mode=agent` to avoid side-effects.
-- All operations are client-side. No server calls. No authentication required.
+- The app auto-saves to `localStorage` and (when signed in) to the user's Supabase account. Use `?mode=agent` to avoid local side-effects.
+- Public shares (`?c=`) are read-only snapshots — opening one in a logged-in account effectively forks it as a new draft.

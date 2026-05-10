@@ -1,0 +1,86 @@
+# Cronograma Creator — robots.txt
+# ES: Permite indexación general y declara política para crawlers de IA.
+# EN: Allows general indexing and declares policy for AI crawlers.
+
+User-agent: *
+Allow: /
+# Cloudflare Content Signals — public schedule snapshots and docs are open to
+# search and to use as AI inputs, but the project does not consent to being
+# used as training data.
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+
+# --- Search engine crawlers (explicit allow) ---
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+# --- AI training crawlers: deny by default ---
+# We allow AI agents to *read* the docs and operate the app live (ai-input),
+# but we do not want our content used for model training (ai-train=no).
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+
+User-agent: PerplexityBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: Bytespider
+Disallow: /
+
+User-agent: Applebot-Extended
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /
+
+User-agent: anthropic-ai
+Disallow: /
+
+User-agent: cohere-ai
+Disallow: /
+
+User-agent: FacebookBot
+Disallow: /
+
+User-agent: ImagesiftBot
+Disallow: /
+
+User-agent: Omgilibot
+Disallow: /
+
+# --- AI agents that operate the app live (read-only, no training) ---
+# These agents may fetch llms.txt / state.schema.json / .well-known/* in order
+# to drive the app on behalf of a human user. Allow access to discovery docs.
+User-agent: ChatGPT-User
+Allow: /llms.txt
+Allow: /state.schema.json
+Allow: /.well-known/
+Allow: /favicon.svg
+Disallow: /
+
+User-agent: PerplexityBot-User
+Allow: /llms.txt
+Allow: /state.schema.json
+Allow: /.well-known/
+Disallow: /
+
+User-agent: ClaudeBot-User
+Allow: /llms.txt
+Allow: /state.schema.json
+Allow: /.well-known/
+Disallow: /
+
+Sitemap: https://juangenovardortiz.github.io/cronograma_creator/sitemap.xml
