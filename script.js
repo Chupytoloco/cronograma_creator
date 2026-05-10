@@ -142,6 +142,8 @@ const translations = {
         todayLabel: "HOY",
         confirmChangeColor: "Esto cambiará el color de todas las tareas del proyecto. ¿Deseas continuar?",
         shareBtn: "Compartir", shareBtnTitle: "Compartir enlace", sharePopupTitle: "Compartir enlace",
+        shareGenerating: "Generando enlace…",
+        shareFallbackHint: "Sin conexión: enlace local (largo). Vuelve a intentarlo para obtener un enlace corto.",
         sidebarToggleTitle: "Mostrar/Ocultar panel",
         sidebarSignedOutHint: "Guarda tus cronogramas en la nube y accede desde cualquier dispositivo.",
         sidebarSignedOutListHint: "Inicia sesión para ver tus cronogramas guardados.",
@@ -213,6 +215,8 @@ const translations = {
         todayLabel: "TODAY",
         confirmChangeColor: "This will change the color of all tasks in the project. Do you want to continue?",
         shareBtn: "Share", shareBtnTitle: "Share link", sharePopupTitle: "Share link",
+        shareGenerating: "Generating link…",
+        shareFallbackHint: "Offline: using local link (long). Try again later to get a short link.",
         sidebarToggleTitle: "Show/Hide panel",
         sidebarSignedOutHint: "Save your schedules in the cloud and access them from any device.",
         sidebarSignedOutListHint: "Sign in to see your saved schedules.",
@@ -389,15 +393,27 @@ window.addEventListener('load', () => {
     const sharePopup = document.getElementById('share-popup');
     const shareUrlInput = document.getElementById('share-url-input');
     const shareCopyBtn = document.getElementById('share-copy-btn');
+    const shareFallbackHint = document.getElementById('share-fallback-hint');
 
-    shareBtn.addEventListener('click', (e) => {
+    shareBtn.addEventListener('click', async (e) => {
         e.stopPropagation();
         const isVisible = sharePopup.style.display !== 'none';
         if (isVisible) {
             sharePopup.style.display = 'none';
-        } else {
-            shareUrlInput.value = generateShareUrl();
-            sharePopup.style.display = 'block';
+            return;
+        }
+        // Muestra el popup con un estado de "generando" mientras se llama al endpoint.
+        shareUrlInput.value = getTranslation('shareGenerating');
+        shareUrlInput.disabled = true;
+        if (shareFallbackHint) shareFallbackHint.style.display = 'none';
+        sharePopup.style.display = 'block';
+
+        const { url, source } = await generateShortShareUrl();
+        shareUrlInput.value = url;
+        shareUrlInput.disabled = false;
+        try { shareUrlInput.select(); } catch {}
+        if (shareFallbackHint) {
+            shareFallbackHint.style.display = source === 'fallback' ? 'block' : 'none';
         }
     });
 
@@ -876,6 +892,66 @@ function generateShareUrl() {
     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(state))));
     return `${location.origin}${location.pathname}#s=${encoded}`;
 }
+
+// Caché en memoria del último share corto, indexado por hash del estado.
+// Evita crear filas duplicadas en shared_schedules si el usuario abre el popup
+// varias veces sin cambiar nada.
+const _shortShareCache = { hash: null, url: null };
+
+function _hashStateForShare(s) {
+    // FNV-1a 32-bit. Suficiente para detectar cambios en el state.
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+    }
+    return (h >>> 0).toString(16);
+}
+
+// ES: Genera (o reutiliza) una URL corta llamando al endpoint create-share.
+// EN: Builds (or reuses) a short share URL via the create-share endpoint.
+// Devuelve { url, source: 'remote' | 'cache' | 'fallback' }.
+async function generateShortShareUrl() {
+    const state = {
+        title: document.getElementById('cronograma-title').value,
+        startMonth: document.getElementById('start-month').value,
+        endMonth: document.getElementById('end-month').value,
+        theme: document.getElementById('theme-selector').value,
+        lang: document.getElementById('lang-selector').value,
+        projects: projects
+    };
+    const stateJson = JSON.stringify(state);
+    const hash = _hashStateForShare(stateJson);
+    if (_shortShareCache.hash === hash && _shortShareCache.url) {
+        return { url: _shortShareCache.url, source: 'cache' };
+    }
+
+    const cfg = window.__SUPABASE_CONFIG__;
+    const base = (cfg && cfg.url) ? cfg.url : 'https://odnysrjhbxwjnwrsrqpw.supabase.co';
+    const endpoint = `${base}/functions/v1/create-share`;
+
+    try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 10000);
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ title: state.title, state }),
+            signal: ctrl.signal
+        });
+        clearTimeout(t);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!json || !json.url) throw new Error('respuesta inválida');
+        _shortShareCache.hash = hash;
+        _shortShareCache.url = json.url;
+        return { url: json.url, source: 'remote' };
+    } catch (err) {
+        console.warn('[share] URL corta no disponible, usando enlace local:', err);
+        return { url: generateShareUrl(), source: 'fallback' };
+    }
+}
+window.generateShortShareUrl = generateShortShareUrl;
 
 function loadFromShareUrl() {
     const hash = location.hash;

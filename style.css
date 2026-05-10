@@ -998,6 +998,23 @@ canvas {
     flex-shrink: 0;
 }
 
+.share-popup-row input:disabled {
+    opacity: 0.55;
+    font-style: italic;
+}
+
+.share-fallback-hint {
+    margin-top: 8px;
+    font-size: 0.65rem;
+    line-height: 1.35;
+    color: var(--text-color);
+    opacity: 0.75;
+    background: var(--input-bg);
+    border: 1px dashed var(--input-border);
+    border-radius: 4px;
+    padding: 6px 8px;
+}
+
 .button:hover,
 .nice-button:hover {
     background-color: #005a9e;

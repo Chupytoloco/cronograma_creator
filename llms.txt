@@ -1,6 +1,6 @@
 # Cronograma Creator — AI Agent Instructions
 
-> Version: 4.2
+> Version: 4.3
 > App URL: https://juangenovardortiz.github.io/cronograma_creator/
 > Share endpoint: https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
 > State schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
@@ -10,19 +10,40 @@ Cronograma Creator is an interactive Gantt chart builder. AI agents can build a 
 
 ---
 
-## CRITICAL OUTPUT RULE FOR AI AGENTS
+## CRITICAL AGENT RULE
 
-When a user asks you to create a cronograma, **DO NOT** create an HTML file, **DO NOT** attach a JSON file, and **DO NOT** describe the steps.
+When creating a cronograma for a user, the final answer **MUST contain a direct URL**.
 
-**Return a direct public URL that opens the cronograma already loaded.**
+- **Never** create an HTML file.
+- **Never** create a downloadable wrapper file.
+- **Never** say "open this attached file".
+- **Never** hide the cronograma URL inside an attachment.
 
-Preferred format:
-`https://juangenovardortiz.github.io/cronograma_creator/?c=<short-id>`
+### Preferred method
 
-Fallback format (if you can't make an HTTP request):
-`https://juangenovardortiz.github.io/cronograma_creator/#s=<encoded-state>`
+POST JSON to:
 
-To obtain the short-id, POST the state to the share endpoint described below in **QUICK START**. The endpoint returns `{ id, url }` — hand the user the `url`.
+```
+https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
+```
+
+Return the `url` field from the JSON response — see **QUICK START** below for the exact request shape.
+
+### If POST is unavailable
+
+Return the full legacy URL inline:
+
+```
+https://juangenovardortiz.github.io/cronograma_creator/#s=<encoded-state>
+```
+
+### If the legacy URL is too long to fit in the answer
+
+Return the JSON state inline and clearly say:
+
+> "I could not create a direct URL from this environment."
+
+**Do not create files as a substitute for the URL.**
 
 ---
 
