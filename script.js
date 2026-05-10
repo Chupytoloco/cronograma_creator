@@ -977,9 +977,24 @@ function loadFromShareUrl() {
         window.history.replaceState(null, '', location.pathname);
         updatePreview();
         resetHistory();
+        _onSharedScheduleLoaded();
     } catch (e) {
         console.error('Error al cargar desde URL compartida:', e);
     }
+}
+
+// ES: Hook común al cargar un cronograma compartido (?c= o #s=). Resetea el
+// vínculo con el cronograma en la nube del usuario (para que el autosave
+// forkee como nueva entrada en lugar de sobrescribir el anterior) y dispara
+// un save vía saveStateToLocalStorage.
+// EN: Common hook after loading a shared schedule (?c= or #s=). Resets the
+// cloud link so autosave creates a new row instead of overwriting the user's
+// previous one, then triggers a save through saveStateToLocalStorage.
+function _onSharedScheduleLoaded() {
+    if (typeof window.__cloudResetCurrent === 'function') {
+        window.__cloudResetCurrent();
+    }
+    saveStateToLocalStorage();
 }
 
 // ES: Carga un cronograma público desde Supabase por ID corto (?c=XXXX).
@@ -1020,6 +1035,7 @@ async function loadFromShortId() {
         // Limpia el query param para que recargar (F5) no vuelva a forzar el fetch.
         const cleanUrl = location.origin + location.pathname + location.hash;
         window.history.replaceState(null, '', cleanUrl);
+        _onSharedScheduleLoaded();
         return true;
     } catch (e) {
         console.error('[share] Error al cargar cronograma compartido:', e);
@@ -3477,7 +3493,31 @@ function exportToExcel() {
             showAvatarFallback(name || email);
         }
         refreshList();
+
+        // ES: Si el usuario abrió un enlace compartido (?c= o #s=) antes de
+        // que la sesión estuviera resuelta, el autosave no pudo dispararse
+        // todavía. Ahora que hay sesión, forzamos un save inmediato para
+        // forkear el cronograma compartido como una nueva entrada en la nube.
+        if (pendingSharedSave) {
+            pendingSharedSave = false;
+            scheduleAutoSave();
+        }
     }
+
+    let pendingSharedSave = false;
+
+    // ES: Marca que se acaba de cargar un cronograma compartido externo.
+    // Si hay sesión activa, el autosave dispara solo (vía saveStateToLocalStorage).
+    // Si la sesión aún no se ha resuelto, renderSignedIn() disparará el save
+    // en cuanto Supabase devuelva la sesión.
+    window.__cloudResetCurrent = function () {
+        currentCloudId = null;
+        lastSavedHash = null;
+        persistCloudState();
+        setSyncStatus('');
+        renderLists();
+        pendingSharedSave = true;
+    };
 
     function renderSignedOut() {
         currentSession = null;
@@ -4050,17 +4090,17 @@ function exportToExcel() {
 
     if (sdkAvailable) {
         supa.auth.getSession().then(({ data }) => {
+            sessionResolved = true;
             if (data?.session) renderSignedIn(data.session);
             else renderSignedOut();
-            sessionResolved = true;
         });
         supa.auth.onAuthStateChange((_event, session) => {
+            sessionResolved = true;
             if (session) renderSignedIn(session);
             else renderSignedOut();
-            sessionResolved = true;
         });
     } else {
-        renderSignedOut();
         sessionResolved = true;
+        renderSignedOut();
     }
 })();

@@ -1,6 +1,6 @@
 # Cronograma Creator — AI Agent Instructions
 
-> Version: 4.6
+> Version: 4.7
 > App URL: https://juangenovardortiz.github.io/cronograma_creator/
 > Share endpoint: https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
 > State schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
