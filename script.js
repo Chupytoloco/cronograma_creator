@@ -3780,13 +3780,26 @@ function exportToExcel() {
                     .eq('id', currentCloudId);
                 if (error) throw error;
             } else {
-                const { data, error } = await supa
-                    .from('cronogramas')
-                    .insert({ user_id: currentSession.user.id, title, state, completed: false })
-                    .select('id')
-                    .single();
-                if (error) throw error;
-                currentCloudId = data.id;
+                // ES: Antes de insertar, comprobamos si el usuario ya tiene un
+                // cronograma con exactamente este contenido (por ejemplo al
+                // abrir un ?c= que es un share de algo que ya está en su
+                // cuenta). Si lo hay, adoptamos su id en lugar de duplicar.
+                // EN: Before inserting, check if the user already has a
+                // cronograma with this exact content (e.g. opening a ?c= that
+                // shares something already in their account). If so, adopt
+                // its id instead of duplicating.
+                const existingId = await findMatchingCronogramaId(title, state);
+                if (existingId) {
+                    currentCloudId = existingId;
+                } else {
+                    const { data, error } = await supa
+                        .from('cronogramas')
+                        .insert({ user_id: currentSession.user.id, title, state, completed: false })
+                        .select('id')
+                        .single();
+                    if (error) throw error;
+                    currentCloudId = data.id;
+                }
             }
             lastSavedHash = hash;
             persistCloudState();
@@ -3798,6 +3811,37 @@ function exportToExcel() {
         } finally {
             isSaving = false;
         }
+    }
+
+    // ES: Serialización canónica (claves ordenadas) para comparar estados.
+    // Postgres jsonb puede devolver objetos con orden de claves distinto al
+    // que se envió, así que JSON.stringify directo daría falsos negativos.
+    function _canonical(v) {
+        if (v === null || typeof v !== 'object') return v;
+        if (Array.isArray(v)) return v.map(_canonical);
+        const out = {};
+        Object.keys(v).sort().forEach(k => { out[k] = _canonical(v[k]); });
+        return out;
+    }
+    function _canonicalJson(v) { return JSON.stringify(_canonical(v)); }
+
+    async function findMatchingCronogramaId(title, state) {
+        if (!supa || !currentSession) return null;
+        const wanted = _canonicalJson({ title: title || '', state });
+        try {
+            const { data, error } = await supa
+                .from('cronogramas')
+                .select('id, title, state')
+                .eq('user_id', currentSession.user.id);
+            if (error || !Array.isArray(data)) return null;
+            for (const row of data) {
+                const rowCanon = _canonicalJson({ title: row.title || '', state: row.state });
+                if (rowCanon === wanted) return row.id;
+            }
+        } catch (err) {
+            console.warn('[cloud] dedupe lookup failed:', err);
+        }
+        return null;
     }
 
     async function loadFromCloud(id) {
