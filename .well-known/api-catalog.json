@@ -1,6 +1,6 @@
 {
   "name": "Cronograma Creator API Catalog",
-  "version": "4.5",
+  "version": "4.6",
   "description": "Cronograma Creator exposes two API surfaces: (1) a single public HTTP endpoint to mint short share URLs, and (2) a browser-side JavaScript API available on window.CronogramaAPI when the app is loaded.",
   "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
   "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",

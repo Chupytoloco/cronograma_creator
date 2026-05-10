@@ -1,6 +1,6 @@
 {
   "name": "Cronograma Creator",
-  "version": "4.5",
+  "version": "4.6",
   "description": "Interactive Gantt chart / schedule builder. AI agents can build a schedule with a single HTTP POST (or GET fallback) and hand the user a short share URL — no browser, no auth required.",
   "url": "https://juangenovardortiz.github.io/cronograma_creator/",
   "instructions": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
@@ -21,6 +21,28 @@
     "export-json",
     "agent-mode",
     "headless-automation"
+  ],
+  "agentFallbackCascade": [
+    {
+      "step": 1,
+      "name": "POST",
+      "description": "POST JSON to the share endpoint, return the 'url' field."
+    },
+    {
+      "step": 2,
+      "name": "GET",
+      "description": "GET the share endpoint with base64url-encoded state and format=text; return the response body verbatim. Use encoding=gzip-base64url for large states."
+    },
+    {
+      "step": 3,
+      "name": "Inline #s= URL",
+      "description": "Encode the state locally with btoa(JSON.stringify(state)) and write the full https://...#s=<encoded> URL in the answer as plain text. No HTTP request required."
+    },
+    {
+      "step": 4,
+      "name": "Downloadable cronograma.json + instructions",
+      "description": "Last resort when steps 1-3 fail. Attach cronograma.json with the raw state object. Tell the user explicitly to open the app and use the 📂 Cargar / Load button to import the file."
+    }
   ],
   "shareEndpoint": {
     "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",

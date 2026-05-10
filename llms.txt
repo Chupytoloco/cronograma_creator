@@ -1,45 +1,98 @@
 # Cronograma Creator — AI Agent Instructions
 
-> Version: 4.5
+> Version: 4.6
 > App URL: https://juangenovardortiz.github.io/cronograma_creator/
 > Share endpoint: https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
 > State schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
 > Well-known manifest: https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json
 
-Cronograma Creator is an interactive Gantt chart builder. AI agents can build a schedule and hand the user a short share URL with **one HTTP request** — no browser, no auth, no client SDK required.
+Cronograma Creator is an interactive Gantt chart builder. AI agents build a cronograma and hand the user a URL that opens it already loaded. No browser, no auth, no client SDK required.
+
+---
+
+## FALLBACK CASCADE — TRY IN ORDER, STOP AT THE FIRST THAT WORKS
+
+The user's runtime decides what an agent can do. To guarantee the user receives a working cronograma, try the four methods below **in order** and stop at the first one that succeeds.
+
+### 1. POST (preferred — short URL)
+
+```http
+POST https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
+Content-Type: application/json
+
+{ "title": "<title>", "state": { ...state... } }
+```
+
+Response body: `{ "id": "aB3xK9mP2q", "url": "https://juangenovardortiz.github.io/cronograma_creator/?c=aB3xK9mP2q" }`.
+Return the `url` to the user as plain text. **Stop here.**
+
+### 2. GET with `format=text` (short URL, no POST needed)
+
+```
+GET https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?s=<base64url_state>&title=<url-encoded-title>&format=text&encoding=base64url
+```
+
+Response body is the short URL as plain text. Return it verbatim to the user. **Stop here.**
+
+For cronogramas larger than ~10 KB of JSON, use `encoding=gzip-base64url` to keep the URL under Cloudflare's ~16-32 KB limit (a 414 from Cloudflare means the URL was too long).
+
+### 3. Inline legacy URL (`#s=`) — works without any HTTP request
+
+If the runtime cannot reach the share endpoint at all, encode the state locally and write the full URL in the answer:
+
+```
+https://juangenovardortiz.github.io/cronograma_creator/#s=<base64(JSON.stringify(state))>
+```
+
+This URL can be very long (the entire state is in the hash) but always works because no server is involved. The page reads the hash on load and renders the cronograma. **Stop here.**
+
+The URL **MUST appear as plain text** — never wrap it in Markdown link syntax, HTML anchors, buttons, or any kind of clickable artifact.
+
+### 4. Last-resort: downloadable `.json` + explicit user instructions
+
+Use this **only** when steps 1–3 all fail (no network, runtime strips long URLs from the answer, etc.).
+
+- Create a single file `cronograma.json` whose **entire contents** are the state object (the schema at [`state.schema.json`](state.schema.json) is authoritative).
+- Attach it to the answer.
+- Tell the user, in plain text, exactly this:
+
+  > **Could not generate a direct URL in this environment.** Open https://juangenovardortiz.github.io/cronograma_creator/ , click the **📂 Cargar / Load** button, and select the attached `cronograma.json` file.
+
+- Do **not** wrap the state in HTML, ZIP, PDF, or any other format. **Only** raw JSON whose top-level keys match the state schema (`title`, `startMonth`, `endMonth`, `projects`, …).
+- Do **not** use this as a substitute when steps 1–3 actually work — it requires manual user action and breaks the "single answer, one click" promise.
 
 ---
 
 ## FINAL ANSWER FORMAT
 
-When returning a cronograma URL, the URL **MUST be visible as plain text**.
+Whatever method you used in the cascade above:
+
+- The URL (when present) **MUST be visible as plain text**.
+- Do **not** hide it in Markdown links, HTML, downloadable wrapper files, buttons, or any clickable artifact.
+- The `.json` attachment is **only** allowed as part of step 4 above, **always** accompanied by the explicit "open the app and use Cargar" sentence.
 
 **Correct:**
 ```
 https://juangenovardortiz.github.io/cronograma_creator/?c=abc123
 ```
 
-**Correct fallback:**
+**Correct legacy fallback (long is fine, as long as it's plain text):**
 ```
-https://juangenovardortiz.github.io/cronograma_creator/#s=...
+https://juangenovardortiz.github.io/cronograma_creator/#s=eyJ0aXRsZSI6Ii4uLiJ9...
 ```
+
+**Correct last-resort:** attach `cronograma.json` + the instructions sentence above.
 
 **Incorrect:**
 ```
 [Open cronograma](https://...)
 ```
 
-**Incorrect:** HTML attachment
-**Incorrect:** TXT attachment
-**Incorrect:** "Download full URL"
-
-Do not hide the URL in Markdown links, HTML, attachments, files, buttons, or downloadable artifacts.
+**Incorrect:** "Download full URL" / "Click here" / HTML attachment / TXT wrapper / PDF.
 
 ---
 
-### ChatGPT-compatible short URL endpoint
-
-If an agent cannot perform POST requests, it may create a short URL with **GET**:
+### ChatGPT-compatible short URL endpoint (details for step 2)
 
 ```
 GET https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?s=<base64url_state>&title=<title>&format=text&encoding=base64url
@@ -51,17 +104,13 @@ GET https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?s=<base64
 - `format=json` (or omitted): returns `{ "id": "...", "url": "..." }`.
 - `encoding=base64url` (default) or `encoding=gzip-base64url` for large states.
 
-Agents **MUST** return the plain text URL directly to the user.
-Agents **MUST NOT** wrap the URL in HTML, Markdown links, TXT files, or downloadable artifacts.
-
 `Cache-Control: no-store` is set on every GET response.
 
-Validation, rate limiting (30/h per IP), and the 180 KB state limit apply identically to GET and POST. Cloudflare itself rejects request URIs above ~16–32 KB with 414, so `encoding=gzip-base64url` is the right choice for non-trivial cronogramas over GET.
+Validation, rate limiting (30/h per IP), and the 180 KB state limit apply identically to GET and POST.
 
-**curl examples:**
+**curl example:**
 
 ```bash
-# encode the state in your shell:
 STATE='{"title":"Demo","startMonth":"0","endMonth":"5","projects":[{"name":"X","color":"#5B8CC8","tasksByRow":[[{"name":"T","startWeek":1,"duration":2}]]}]}'
 S=$(printf '%s' "$STATE" | base64 | tr '+/' '-_' | tr -d '=')
 curl "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?s=$S&title=Demo&format=text&encoding=base64url"
@@ -76,43 +125,6 @@ qs = urllib.parse.urlencode({"s": s, "title": "Demo", "format": "text", "encodin
 url = "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?" + qs
 print(urllib.request.urlopen(url).read().decode().strip())
 ```
-
----
-
-## CRITICAL AGENT RULE
-
-When creating a cronograma for a user, the final answer **MUST contain a direct URL**.
-
-- **Never** create an HTML file.
-- **Never** create a downloadable wrapper file.
-- **Never** say "open this attached file".
-- **Never** hide the cronograma URL inside an attachment.
-
-### Preferred method
-
-POST JSON to:
-
-```
-https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
-```
-
-Return the `url` field from the JSON response — see **QUICK START** below for the exact request shape.
-
-### If POST is unavailable
-
-Return the full legacy URL inline:
-
-```
-https://juangenovardortiz.github.io/cronograma_creator/#s=<encoded-state>
-```
-
-### If the legacy URL is too long to fit in the answer
-
-Return the JSON state inline and clearly say:
-
-> "I could not create a direct URL from this environment."
-
-**Do not create files as a substitute for the URL.**
 
 ---
 
