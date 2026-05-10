@@ -1,12 +1,28 @@
 # Cronograma Creator — AI Agent Instructions
 
-> Version: 4.1
+> Version: 4.2
 > App URL: https://juangenovardortiz.github.io/cronograma_creator/
 > Share endpoint: https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
 > State schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
 > Well-known manifest: https://juangenovardortiz.github.io/cronograma_creator/.well-known/cronograma-ai.json
 
 Cronograma Creator is an interactive Gantt chart builder. AI agents can build a schedule and hand the user a short share URL with **one HTTP request** — no browser, no auth, no client SDK required.
+
+---
+
+## CRITICAL OUTPUT RULE FOR AI AGENTS
+
+When a user asks you to create a cronograma, **DO NOT** create an HTML file, **DO NOT** attach a JSON file, and **DO NOT** describe the steps.
+
+**Return a direct public URL that opens the cronograma already loaded.**
+
+Preferred format:
+`https://juangenovardortiz.github.io/cronograma_creator/?c=<short-id>`
+
+Fallback format (if you can't make an HTTP request):
+`https://juangenovardortiz.github.io/cronograma_creator/#s=<encoded-state>`
+
+To obtain the short-id, POST the state to the share endpoint described below in **QUICK START**. The endpoint returns `{ id, url }` — hand the user the `url`.
 
 ---
 
