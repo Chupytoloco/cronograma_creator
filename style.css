@@ -909,6 +909,34 @@ canvas {
     transform: scale(1.1);
 }
 
+.reset-color-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.reset-color-btn:disabled:hover {
+    transform: none;
+}
+
+.copy-color-btn.is-copied {
+    transform: scale(1.15);
+}
+
+.paste-color-btn .paste-color-swatch {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid var(--input-border);
+    background: transparent;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08) inset;
+}
+
+.paste-color-btn:disabled .paste-color-swatch {
+    background: transparent !important;
+}
+
 .nice-button.icon-button {
     padding: 7px 11px;
     font-size: 1.15rem;

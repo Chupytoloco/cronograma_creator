@@ -143,6 +143,10 @@ const translations = {
         copyImageTitle: "Copiar como Imagen", exportExcelTitle: "Exportar a Excel",
         undoTitle: "Deshacer (Ctrl+Z)", redoTitle: "Rehacer (Ctrl+Y)", resetColorTitle: "Restaurar color del proyecto",
         resetProjectColorTitle: "Restaurar color predeterminado del proyecto",
+        copyColorTitle: "Copiar color",
+        pasteColorTitle: "Pegar color",
+        pasteColorNoneTitle: "No hay color copiado",
+        colorCopied: "Color copiado",
         addTaskAction: "+ Añadir tarea", weekTooltipTo: " al ", acceptBtn: "Aceptar",
         todayLabel: "HOY",
         confirmChangeColor: "Esto cambiará el color de todas las tareas del proyecto. ¿Deseas continuar?",
@@ -216,6 +220,10 @@ const translations = {
         copyImageTitle: "Copy as Image", exportExcelTitle: "Export to Excel",
         undoTitle: "Undo (Ctrl+Z)", redoTitle: "Redo (Ctrl+Y)", resetColorTitle: "Reset project color",
         resetProjectColorTitle: "Restore project default color",
+        copyColorTitle: "Copy color",
+        pasteColorTitle: "Paste color",
+        pasteColorNoneTitle: "No color copied",
+        colorCopied: "Color copied",
         addTaskAction: "+ Add task", weekTooltipTo: " to ", acceptBtn: "Accept",
         todayLabel: "TODAY",
         confirmChangeColor: "This will change the color of all tasks in the project. Do you want to continue?",
@@ -291,6 +299,56 @@ function applyLanguage(lang) {
 function getTranslation(key) {
     const lang = document.getElementById('lang-selector')?.value || 'es';
     return (translations[lang] && translations[lang][key]) ? translations[lang][key] : (translations['es'][key] || key);
+}
+
+// --- Portapapeles de color (persistente entre sesiones) ---
+// Permite copiar un color de una tarea/proyecto y pegarlo en otra.
+const COLOR_CLIPBOARD_KEY = 'cronogramaColorClipboard';
+let _clipboardColor = null;
+try {
+    const raw = localStorage.getItem(COLOR_CLIPBOARD_KEY);
+    if (raw && /^#[0-9a-fA-F]{6}$/.test(raw)) _clipboardColor = raw.toLowerCase();
+} catch {}
+
+function setClipboardColor(hex) {
+    if (typeof hex !== 'string') return;
+    const norm = hex.trim().toLowerCase();
+    if (!/^#[0-9a-fA-F]{6}$/.test(norm)) return;
+    _clipboardColor = norm;
+    try { localStorage.setItem(COLOR_CLIPBOARD_KEY, norm); } catch {}
+    refreshPasteColorButtons();
+}
+
+// Actualiza el estado visual de TODOS los botones de "pegar color" del DOM.
+// Llamar después de cambiar _clipboardColor o tras abrir un modal.
+function refreshPasteColorButtons() {
+    document.querySelectorAll('.paste-color-btn').forEach(btn => {
+        const swatch = btn.querySelector('.paste-color-swatch');
+        if (_clipboardColor) {
+            btn.disabled = false;
+            const t = getTranslation('pasteColorTitle');
+            btn.title = `${t} (${_clipboardColor})`;
+            if (swatch) swatch.style.background = _clipboardColor;
+        } else {
+            btn.disabled = true;
+            btn.title = getTranslation('pasteColorNoneTitle');
+            if (swatch) swatch.style.background = 'transparent';
+        }
+    });
+}
+
+// Feedback visual transitorio en el botón de copiar.
+function flashCopyButton(btn) {
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = '✅';
+    btn.classList.add('is-copied');
+    btn.title = getTranslation('colorCopied');
+    setTimeout(() => {
+        btn.textContent = orig;
+        btn.classList.remove('is-copied');
+        btn.title = getTranslation('copyColorTitle');
+    }, 900);
 }
 
 // --- MODO AGENTE / AGENT MODE ---
@@ -1376,6 +1434,26 @@ function openProjectEditModal(projectIndex) {
         updatePreview();
     };
 
+    const projectCopyBtn = document.getElementById('modal-project-copy-color-btn');
+    const projectPasteBtn = document.getElementById('modal-project-paste-color-btn');
+    if (projectCopyBtn) {
+        projectCopyBtn.onclick = () => {
+            const colorEl = document.getElementById('modal-project-color');
+            setClipboardColor(colorEl.value);
+            flashCopyButton(projectCopyBtn);
+        };
+    }
+    if (projectPasteBtn) {
+        projectPasteBtn.onclick = () => {
+            if (!_clipboardColor) return;
+            document.getElementById('modal-project-color').value = _clipboardColor;
+            project.color = _clipboardColor;
+            updatePreview();
+            saveToHistory();
+        };
+    }
+    refreshPasteColorButtons();
+
     const compactCheckbox = document.getElementById('modal-project-compact');
     const projectCompactToggle = document.querySelector('#project-edit-modal .compact-toggle');
     if (projectCompactToggle) {
@@ -1468,6 +1546,27 @@ function openTaskModal(projectIndex, rowIndex, taskIndex) {
         delete projects[projectIndex].tasksByRow[rowIndex][taskIndex].color;
         updatePreview();
     };
+
+    const taskCopyBtn = document.getElementById('modal-copy-color-btn');
+    const taskPasteBtn = document.getElementById('modal-paste-color-btn');
+    if (taskCopyBtn) {
+        taskCopyBtn.onclick = () => {
+            const colorEl = document.getElementById('modal-task-color');
+            setClipboardColor(colorEl.value);
+            flashCopyButton(taskCopyBtn);
+        };
+    }
+    if (taskPasteBtn) {
+        taskPasteBtn.onclick = () => {
+            if (!_clipboardColor) return;
+            const taskColorInput = document.getElementById('modal-task-color');
+            taskColorInput.value = _clipboardColor;
+            projects[projectIndex].tasksByRow[rowIndex][taskIndex].color = _clipboardColor;
+            updatePreview();
+            saveToHistory();
+        };
+    }
+    refreshPasteColorButtons();
 
     const modalInputs = ['modal-task-name', 'modal-task-type', 'modal-text-position', 'modal-task-compact', 'modal-task-color', 'modal-task-completed'];
     modalInputs.forEach(id => {
