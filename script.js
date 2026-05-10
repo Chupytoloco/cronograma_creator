@@ -20,6 +20,11 @@ const animationDuration = 0;
 let taskHitboxes = [];
 let projectHitboxes = [];
 let addTaskHitboxes = []; // Hitboxes para los botones de 'Añadir Tarea'
+// ES: Layout cacheado de cada proyecto en el último render para que la lógica
+// de drag use exactamente las mismas coordenadas que se dibujaron en pantalla.
+// EN: Cached project layout from the last render so drag logic uses the exact
+// same coordinates that were painted on screen.
+let projectLayouts = []; // [{ startY, innerH, topPad, rowTops, rowHeights, totalTasksH }]
 let isDrawingForExport = false; // Flag para el dibujado de exportación
 let exportRightPadding = 0; // Píxeles extra a la derecha en exportación para que las etiquetas de hitos no se corten
 const resizeHandleWidth = 15; // Ancho del área de redimensión
@@ -1886,7 +1891,8 @@ function handleCanvasMouseMove(e) {
 
     // --- Lógica de Redimensión ---
     if (resizingTask) {
-        const weekWidth = (canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth) / totalWeeks;
+        const dpr = ctx.getTransform().a || 1;
+        const weekWidth = (canvas.width / dpr - projectLabelWidth) / totalWeeks;
         const currentWeek = Math.round((x - projectLabelWidth) / weekWidth);
 
         if (resizingTask.handle === 'left') {
@@ -1924,34 +1930,38 @@ function handleCanvasMouseMove(e) {
             const { projectIndex, rowIndex, taskIndex } = draggingTask;
             const task = projects[projectIndex].tasksByRow[rowIndex][taskIndex];
 
-            // Calcular la nueva semana de inicio basado en la posición del ratón
-            const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
+            // Calcular la nueva semana de inicio basado en la posición del ratón.
+            // Usar el DPR real del contexto (no window.devicePixelRatio) para evitar
+            // desincronizaciones cuando hay zoom del browser o escala del sistema.
+            const dpr = ctx.getTransform().a || 1;
+            const chartWidth = canvas.width / dpr - projectLabelWidth;
             const weekWidth = chartWidth / totalWeeks;
             let newStartWeek = Math.round((x - projectLabelWidth - draggingTask.offsetX) / weekWidth);
             newStartWeek = Math.max(0, Math.min(newStartWeek, totalWeeks - task.duration));
             task.startWeek = newStartWeek + 1;
 
-            // Calcular el destino potencial para el feedback visual.
-            // Debe coincidir exactamente con el layout de drawProjects,
-            // que inserta un placeholder que desplaza las filas siguientes.
-            let projectTopY = headerHeight;
-            for (let i = 0; i < projectIndex; i++) {
-                let ph = 0;
-                projects[i].tasksByRow.forEach(r => { ph += getRowHeight(r); });
-                projectTopY += 15 + ph + 40;
+            // Calcular el destino potencial para el feedback visual usando el
+            // layout cacheado del último render. Evita divergencias entre la
+            // posición visual y la posición lógica del cursor.
+            const layout = projectLayouts[projectIndex];
+            let projectTopY, totalProjectHeight, rowTops, numRows;
+            if (layout) {
+                projectTopY = layout.startY + layout.topPad;
+                totalProjectHeight = layout.totalTasksH;
+                rowTops = layout.rowTops;
+                numRows = layout.rowHeights.length;
+            } else {
+                // Fallback defensivo: si por alguna razón no hay layout cacheado.
+                projectTopY = headerHeight;
+                numRows = projects[projectIndex].tasksByRow.length;
+                rowTops = [];
+                let accY = 0;
+                for (let i = 0; i < numRows; i++) {
+                    rowTops.push(accY);
+                    accY += getRowHeight(projects[projectIndex].tasksByRow[i]);
+                }
+                totalProjectHeight = accY;
             }
-            projectTopY += 15;
-
-            const numRows = projects[projectIndex].tasksByRow.length;
-
-            // Construir acumulados de Y por fila para soportar alturas dinámicas
-            const rowTops = [];
-            let accY = 0;
-            for (let i = 0; i < numRows; i++) {
-                rowTops.push(accY);
-                accY += getRowHeight(projects[projectIndex].tasksByRow[i]);
-            }
-            const totalProjectHeight = accY;
 
             // Determinar el destino de drop:
             // - Si el cursor cae en el tercio central de una fila existente → fusionar (merge)
@@ -2178,6 +2188,7 @@ function drawProjects() {
     projectHitboxes = [];
     if (!isDrawingForExport) {
         addTaskHitboxes = []; // Limpiar hitboxes en cada redibujado
+        projectLayouts = [];
     }
 
     projects.forEach((project, projectIndex) => {
@@ -2213,11 +2224,32 @@ function drawProjects() {
         const headerBlockH = topPad + nameBlockH +
             (includeButton ? nameToBtnGap + buttonHeight : 0) + bottomPad;
 
+        const rowHeights = project.tasksByRow.map(row => getRowHeight(row));
         let tasksTotalH = 0;
-        project.tasksByRow.forEach(row => { tasksTotalH += getRowHeight(row); });
+        rowHeights.forEach(h => { tasksTotalH += h; });
         const tasksBlockH = tasksTotalH > 0 ? topPad + tasksTotalH + bottomPad : 0;
 
         const projectInnerH = Math.max(headerBlockH, tasksBlockH);
+
+        // Guardar el layout para que la lógica de drag use exactamente las
+        // mismas coordenadas que el render. Solo durante render interactivo
+        // (no durante exportación a imagen).
+        if (!isDrawingForExport) {
+            const rowTops = [];
+            let accRow = 0;
+            for (let i = 0; i < rowHeights.length; i++) {
+                rowTops.push(accRow);
+                accRow += rowHeights[i];
+            }
+            projectLayouts[projectIndex] = {
+                startY: projectStartY,
+                innerH: projectInnerH,
+                topPad,
+                rowTops,
+                rowHeights,
+                totalTasksH: tasksTotalH
+            };
+        }
 
         // Fondo tintado de la columna izquierda con el color del proyecto
         // Tinted background for the left column using the project color
@@ -2551,7 +2583,8 @@ function drawGhostTask() {
     const isCompact = !!task.compact;
     const barHeight = isCompact ? 14 : 30;
     const barY = lastMousePosition.y - offsetY;
-    const chartWidth = canvas.width / (window.devicePixelRatio || 1) - projectLabelWidth;
+    const dpr = ctx.getTransform().a || 1;
+    const chartWidth = canvas.width / dpr - projectLabelWidth;
     const weekWidth = chartWidth / totalWeeks;
     const startX = projectLabelWidth + (task.startWeek - 1) * weekWidth;
     const barWidth = task.duration * weekWidth;
