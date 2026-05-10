@@ -1,6 +1,6 @@
 # Cronograma Creator — AI Agent Instructions
 
-> Version: 4.4
+> Version: 4.5
 > App URL: https://juangenovardortiz.github.io/cronograma_creator/
 > Share endpoint: https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share
 > State schema: https://juangenovardortiz.github.io/cronograma_creator/state.schema.json
@@ -34,6 +34,48 @@ https://juangenovardortiz.github.io/cronograma_creator/#s=...
 **Incorrect:** "Download full URL"
 
 Do not hide the URL in Markdown links, HTML, attachments, files, buttons, or downloadable artifacts.
+
+---
+
+### ChatGPT-compatible short URL endpoint
+
+If an agent cannot perform POST requests, it may create a short URL with **GET**:
+
+```
+GET https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?s=<base64url_state>&title=<title>&format=text&encoding=base64url
+```
+
+- `s` (required): base64url-encoded UTF-8 JSON state. Use `-` and `_` instead of `+` and `/`. Padding (`=`) is optional.
+- `title` (optional): URL-encoded. Max 200 chars.
+- `format=text` (recommended): returns the final share URL as plain text (one line + newline), `Content-Type: text/plain; charset=utf-8`.
+- `format=json` (or omitted): returns `{ "id": "...", "url": "..." }`.
+- `encoding=base64url` (default) or `encoding=gzip-base64url` for large states.
+
+Agents **MUST** return the plain text URL directly to the user.
+Agents **MUST NOT** wrap the URL in HTML, Markdown links, TXT files, or downloadable artifacts.
+
+`Cache-Control: no-store` is set on every GET response.
+
+Validation, rate limiting (30/h per IP), and the 180 KB state limit apply identically to GET and POST. Cloudflare itself rejects request URIs above ~16–32 KB with 414, so `encoding=gzip-base64url` is the right choice for non-trivial cronogramas over GET.
+
+**curl examples:**
+
+```bash
+# encode the state in your shell:
+STATE='{"title":"Demo","startMonth":"0","endMonth":"5","projects":[{"name":"X","color":"#5B8CC8","tasksByRow":[[{"name":"T","startWeek":1,"duration":2}]]}]}'
+S=$(printf '%s' "$STATE" | base64 | tr '+/' '-_' | tr -d '=')
+curl "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?s=$S&title=Demo&format=text&encoding=base64url"
+# -> https://juangenovardortiz.github.io/cronograma_creator/?c=aB3xK9mP2q
+```
+
+```python
+import json, base64, urllib.parse, urllib.request
+state = {"title": "Demo", "startMonth": "0", "endMonth": "5", "projects": [...]}
+s = base64.urlsafe_b64encode(json.dumps(state).encode("utf-8")).decode().rstrip("=")
+qs = urllib.parse.urlencode({"s": s, "title": "Demo", "format": "text", "encoding": "base64url"})
+url = "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share?" + qs
+print(urllib.request.urlopen(url).read().decode().strip())
+```
 
 ---
 
@@ -178,6 +220,28 @@ print(r.json()['url'])
 | `400 Bad Request` | `{ "error": "<reason>" }` — invalid JSON or invalid state |
 | `413 Payload Too Large` | state JSON > 180 KB |
 | `429 Too Many Requests` | rate limit: max 30 shares per IP per hour |
+
+### `GET /functions/v1/create-share` (agent fallback)
+
+Use this only if your environment cannot POST. Validation, rate limit, lifetime and size limit are identical to POST.
+
+| Query param | Type | Required | Notes |
+|---|---|---|---|
+| `s` | string | yes | Encoded state (see `encoding` below) |
+| `title` | string | no | URL-encoded title, max 200 chars |
+| `format` | `text` \| `json` | no | `text` returns just the URL as plain text. `json` (default) returns `{id,url}` |
+| `encoding` | `base64url` \| `gzip-base64url` | no | Defaults to `base64url`. Use `gzip-base64url` for large states to stay under CDN URL limits (~16–32 KB) |
+
+| Response | Body |
+|---|---|
+| `200 OK` (`format=text`) | `<full URL>\n`, `Content-Type: text/plain; charset=utf-8` |
+| `200 OK` (`format=json`) | `{ "id": "<short-id>", "url": "<full URL>" }`, `Content-Type: application/json` |
+| `400 Bad Request` | `{ "error": "<reason>" }` — missing `s`, bad encoding, invalid base64url, invalid UTF-8, invalid JSON, invalid state |
+| `413 Payload Too Large` | decoded state > 180 KB |
+| `429 Too Many Requests` | rate limit |
+| `414 Request-URI Too Large` | returned by Cloudflare *before* this function runs when the URL itself is too long — switch to `encoding=gzip-base64url` or to POST |
+
+All GET responses include `Cache-Control: no-store`.
 
 **Lifecycle:** Anonymous shares expire 90 days after creation. No auth required to create or read.
 

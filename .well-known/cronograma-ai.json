@@ -1,7 +1,7 @@
 {
   "name": "Cronograma Creator",
-  "version": "4.0",
-  "description": "Interactive Gantt chart / schedule builder. AI agents can build a schedule with a single HTTP POST and hand the user a short share URL — no browser, no auth required.",
+  "version": "4.5",
+  "description": "Interactive Gantt chart / schedule builder. AI agents can build a schedule with a single HTTP POST (or GET fallback) and hand the user a short share URL — no browser, no auth required.",
   "url": "https://juangenovardortiz.github.io/cronograma_creator/",
   "instructions": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
   "schema": "https://juangenovardortiz.github.io/cronograma_creator/state.schema.json",
@@ -23,21 +23,43 @@
     "headless-automation"
   ],
   "shareEndpoint": {
-    "method": "POST",
     "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
-    "contentType": "application/json",
+    "methods": ["POST", "GET"],
+    "preferredMethod": "POST",
     "auth": "none",
-    "requestBody": {
-      "title": "string (optional, max 200 chars)",
-      "state": "object (see state.schema.json)"
+    "post": {
+      "method": "POST",
+      "contentType": "application/json",
+      "requestBody": {
+        "title": "string (optional, max 200 chars)",
+        "state": "object (see state.schema.json)"
+      },
+      "responseBody": {
+        "id": "string (10-char alphanumeric short id)",
+        "url": "string (full public URL)"
+      }
     },
-    "responseBody": {
-      "id": "string (10-char alphanumeric short id)",
-      "url": "string (full public URL)"
+    "get": {
+      "method": "GET",
+      "description": "Fallback for agents that cannot POST. Same validation, rate limit and limits as POST.",
+      "queryParams": {
+        "s": "string (required) — encoded state, see 'encoding'",
+        "title": "string (optional, URL-encoded, max 200 chars)",
+        "format": "'text' | 'json' (default 'json'). 'text' returns just the URL as text/plain.",
+        "encoding": "'base64url' (default) | 'gzip-base64url'. Use gzip for large states (CDN limits URL to ~16-32 KB)."
+      },
+      "responseHeaders": {
+        "Cache-Control": "no-store"
+      },
+      "examples": {
+        "text": "GET .../create-share?s=<base64url>&title=Demo&format=text&encoding=base64url -> 'https://juangenovardortiz.github.io/cronograma_creator/?c=aB3xK9mP2q\\n'",
+        "json": "GET .../create-share?s=<base64url> -> { \"id\": \"aB3xK9mP2q\", \"url\": \"...\" }"
+      }
     },
     "errors": {
-      "400": "invalid JSON or invalid state",
-      "413": "state JSON > 180 KB",
+      "400": "invalid request, missing 's', invalid encoding/format, invalid base64url/UTF-8/JSON, or invalid state",
+      "413": "state JSON > 180 KB after decoding",
+      "414": "Cloudflare returns 414 Request-URI Too Large when GET URL exceeds ~16-32 KB. Switch to encoding=gzip-base64url or POST.",
       "429": "rate limit: 30 shares per IP per hour"
     },
     "lifetime": "Anonymous shares expire 90 days after creation."

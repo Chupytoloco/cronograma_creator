@@ -1,6 +1,6 @@
 {
   "name": "Cronograma Creator API Catalog",
-  "version": "4.0",
+  "version": "4.5",
   "description": "Cronograma Creator exposes two API surfaces: (1) a single public HTTP endpoint to mint short share URLs, and (2) a browser-side JavaScript API available on window.CronogramaAPI when the app is loaded.",
   "homepage": "https://juangenovardortiz.github.io/cronograma_creator/",
   "documentation": "https://juangenovardortiz.github.io/cronograma_creator/llms.txt",
@@ -27,6 +27,39 @@
         "413": { "error": "string — state too large (>180 KB)" },
         "429": { "error": "string — rate limit (30/hr per IP)" }
       }
+    },
+    {
+      "id": "create-share-get",
+      "type": "http",
+      "title": "Create publicly-shareable cronograma via GET (agent fallback)",
+      "description": "Alternative entry point for agents that can only perform GET requests. Same validation, rate limit, lifetime and size limit as the POST endpoint.",
+      "method": "GET",
+      "url": "https://odnysrjhbxwjnwrsrqpw.supabase.co/functions/v1/create-share",
+      "auth": "none",
+      "request": {
+        "query": {
+          "s":        { "type": "string", "required": true,  "description": "Encoded state — see 'encoding' below." },
+          "title":    { "type": "string", "required": false, "maxLength": 200, "description": "URL-encoded title." },
+          "format":   { "type": "string", "required": false, "enum": ["text", "json"], "default": "json" },
+          "encoding": { "type": "string", "required": false, "enum": ["base64url", "gzip-base64url"], "default": "base64url" }
+        }
+      },
+      "response": {
+        "200-text": {
+          "contentType": "text/plain; charset=utf-8",
+          "body": "<full URL>\\n"
+        },
+        "200-json": {
+          "contentType": "application/json",
+          "body": { "id": "string", "url": "string" }
+        },
+        "headers": { "Cache-Control": "no-store" },
+        "400": { "error": "string — missing 's', invalid encoding/format, invalid base64url/UTF-8/JSON, or invalid state" },
+        "413": { "error": "string — decoded state > 180 KB" },
+        "414": { "error": "Cloudflare returns 414 if the GET URL is too long (~16-32 KB). Use encoding=gzip-base64url or POST." },
+        "429": { "error": "string — rate limit (30/hr per IP)" }
+      },
+      "agentNotes": "Always pass format=text. Return the response body to the user verbatim as plain text — never wrap it in Markdown, HTML or attachments."
     },
     {
       "id": "browser-CronogramaAPI",
