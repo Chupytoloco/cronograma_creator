@@ -1,6 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Gantt-style stacked bars: rojo, verde, azul -->
-  <rect x="3"  y="6"  width="15" height="5" rx="1.4" fill="#E04848"/>
-  <rect x="8"  y="13.5" width="18" height="5" rx="1.4" fill="#34C759"/>
-  <rect x="14" y="21" width="15" height="5" rx="1.4" fill="#2F80ED"/>
+  <!-- Gantt chart: eje vertical + barras desplazadas en el tiempo + línea de "hoy" -->
+  <!-- Eje vertical (columna de tareas) -->
+  <rect x="3" y="4" width="1.5" height="24" rx="0.5" fill="#94A3B8"/>
+  <!-- Barras desplazadas horizontalmente (timeline) -->
+  <rect x="6"  y="7"  width="12" height="4" rx="1" fill="#2F80ED"/>
+  <rect x="11" y="14" width="14" height="4" rx="1" fill="#34C759"/>
+  <rect x="8"  y="21" width="10" height="4" rx="1" fill="#F2994A"/>
+  <!-- Línea vertical "hoy" -->
+  <rect x="17.25" y="4" width="1" height="24" rx="0.4" fill="#64748B" opacity="0.55"/>
 </svg>
