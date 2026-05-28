@@ -64,6 +64,59 @@ let nextColorIndex = 0;
 let months = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
 let totalWeeks = 26; // Se calcula dinámicamente
 
+// ES: Modo de vista. 'week' = cabecera Mes/Semana (columnas = semanas).
+//     'day' = cabecera Semana/Día (columnas = días, granularidad 1/7 de semana).
+// EN: View mode. 'week' = Month/Week header (columns = weeks).
+//     'day' = Week/Day header (columns = days, 1/7-week granularity).
+let viewMode = 'week';
+
+// Tope de semanas visibles en modo Semana/Día (paralelo al tope de 12 meses).
+// Max number of weeks shown in Week/Day mode (mirrors the 12-month cap).
+const MAX_DAYVIEW_WEEKS = 12;
+
+// Último lunes de inicio (ISO) en modo día, para desplazar tareas al cambiarlo.
+let lastStartWeekISO = null;
+
+// Indica si el rango de semanas ya se fijó (por sincronización o por carga de un
+// estado en modo día). Si no, al entrar en modo día se deriva del rango de meses.
+let weekRangeSet = false;
+
+function setViewMode(mode) {
+    viewMode = (mode === 'day') ? 'day' : 'week';
+    const sel = document.getElementById('view-mode');
+    if (sel) sel.value = viewMode;
+
+    // Alternar entre selectores de mes (modo semana) y de semana (modo día).
+    const sm = document.getElementById('start-month');
+    const em = document.getElementById('end-month');
+    const sw = document.getElementById('start-week');
+    const ew = document.getElementById('end-week');
+    if (sm && em && sw && ew) {
+        const isDay = viewMode === 'day';
+        sm.style.display = isDay ? 'none' : '';
+        em.style.display = isDay ? 'none' : '';
+        sw.style.display = isDay ? '' : 'none';
+        ew.style.display = isDay ? '' : 'none';
+        // Al entrar en modo día sin rango fijado, derivar del rango de meses.
+        if (isDay && !weekRangeSet) syncWeekSelectorsFromMonths();
+    }
+}
+
+// ES: Ajusta un valor en semanas a la rejilla del modo actual: semanas enteras
+//     en modo 'week', o múltiplos de 1/7 (días) en modo 'day'.
+// EN: Snaps a week-valued position to the current mode's grid: whole weeks in
+//     'week' mode, or 1/7 (day) increments in 'day' mode.
+function snapWeeks(weeksValue) {
+    if (viewMode === 'day') return Math.round(weeksValue * 7) / 7;
+    return Math.round(weeksValue);
+}
+
+// Duración mínima de una tarea al redimensionar, según el modo.
+// Minimum task duration while resizing, depending on the mode.
+function minDurationWeeks() {
+    return viewMode === 'day' ? 1 / 7 : 0.5;
+}
+
 const rowHeight = 35;
 const compactRowHeight = 22;
 const headerHeight = 70;
@@ -117,6 +170,8 @@ const translations = {
         undoBtn: "Deshacer", redoBtn: "Rehacer", scheduleLabel: "Cronograma:",
         schedulePlaceholder: "Título del Cronograma", startLabel: "Inicio:",
         endLabel: "Fin:", themeLabel: "Tema:", langLabel: "Idioma:",
+        viewLabel: "Vista:", viewMonthWeek: "Mes / Semana", viewWeekDay: "Semana / Día",
+        weekdayInitials: ["L", "M", "X", "J", "V", "S", "D"],
         themeDark: "Oscuro", themeLight: "Claro", themeModern: "Moderno", themeGray: "Gris",
         addProjectBtn: "Añadir Proyecto", pasteExcelBtn: "Excel", loadBtn: "Cargar", loadBtnTitle: "Cargar Cronograma",
         pasteInstructions: "Pega aquí tu tabla desde Excel (Proyecto en Columna A, Tarea en Columna B).",
@@ -194,6 +249,8 @@ const translations = {
         undoBtn: "Undo", redoBtn: "Redo", scheduleLabel: "Schedule:",
         schedulePlaceholder: "Schedule Title", startLabel: "Start:",
         endLabel: "End:", themeLabel: "Theme:", langLabel: "Language:",
+        viewLabel: "View:", viewMonthWeek: "Month / Week", viewWeekDay: "Week / Day",
+        weekdayInitials: ["M", "T", "W", "T", "F", "S", "S"],
         themeDark: "Dark", themeLight: "Light", themeModern: "Modern", themeGray: "Gray",
         addProjectBtn: "Add Project", pasteExcelBtn: "Excel", loadBtn: "Load", loadBtnTitle: "Load Schedule",
         pasteInstructions: "Paste your Excel table here (Project in Column A, Task in Column B).",
@@ -380,6 +437,8 @@ window.addEventListener('load', () => {
 
     // El orden correcto y único de inicialización
     populateMonthSelectors();
+    populateWeekSelectors();
+    setViewMode(viewMode); // Estado inicial de visibilidad de selectores (mes vs semana)
     // ES: Si la URL trae ?c=ID (cronograma compartido por la nube), no cargamos
     // localStorage para evitar el flash de un cronograma ajeno antes del fetch.
     // EN: If URL has ?c=ID (cloud-shared schedule), skip localStorage to avoid
@@ -434,8 +493,37 @@ window.addEventListener('load', () => {
         updatePreview();
         saveToHistory();
     });
+
+    // Selectores de semana (modo Semana/Día)
+    document.getElementById('start-week').addEventListener('change', () => {
+        const sw = document.getElementById('start-week');
+        // Desplazar tareas para que conserven su posición de calendario.
+        if (lastStartWeekISO && lastStartWeekISO !== sw.value) {
+            const oldMonday = mondayOf(parseISODate(lastStartWeekISO));
+            const newMonday = mondayOf(parseISODate(sw.value));
+            const weeksDiff = Math.round((newMonday - oldMonday) / (1000 * 60 * 60 * 24 * 7));
+            if (weeksDiff !== 0) {
+                projects.forEach(p => p.tasksByRow.forEach(r => r.forEach(t => { t.startWeek -= weeksDiff; })));
+            }
+        }
+        clampEndWeek();
+        lastStartWeekISO = sw.value;
+        updatePreview();
+        saveToHistory();
+    });
+    document.getElementById('end-week').addEventListener('change', () => {
+        clampEndWeek();
+        updatePreview();
+        saveToHistory();
+    });
+
     document.getElementById('theme-selector').addEventListener('change', (e) => {
         applyTheme(e.target.value);
+        updatePreview();
+        saveToHistory();
+    });
+    document.getElementById('view-mode').addEventListener('change', (e) => {
+        setViewMode(e.target.value);
         updatePreview();
         saveToHistory();
     });
@@ -533,18 +621,33 @@ window.addEventListener('load', () => {
                 const logicalW = hCanvasEl.width / dpr;
                 const chartW = logicalW - projectLabelWidth;
                 const weekW = chartW / totalWeeks;
-                const weekIndex = Math.floor((mx - projectLabelWidth) / weekW);
+                const startDate = getStartDate();
+                const fmt = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
 
-                if (weekIndex >= 0 && weekIndex < totalWeeks) {
-                    const startDate = getStartDate();
-                    const weekStart = new Date(startDate.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
-                    const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
-                    const fmt = d => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
-                    weekTooltip.textContent = `${fmt(weekStart)}${getTranslation('weekTooltipTo')}${fmt(weekEnd)}`;
-                    weekTooltip.style.left = (e.clientX + 12) + 'px';
-                    weekTooltip.style.top = (e.clientY + 12) + 'px';
-                    weekTooltip.classList.add('visible');
-                    return;
+                if (viewMode === 'day') {
+                    const dayW = weekW / 7;
+                    const dayIndex = Math.floor((mx - projectLabelWidth) / dayW);
+                    if (dayIndex >= 0 && dayIndex < totalWeeks * 7) {
+                        const day = new Date(startDate.getTime() + dayIndex * 24 * 60 * 60 * 1000);
+                        const initials = getTranslation('weekdayInitials') || [];
+                        const wdIdx = (day.getDay() + 6) % 7;
+                        weekTooltip.textContent = `${initials[wdIdx] || ''} ${fmt(day)}`.trim();
+                        weekTooltip.style.left = (e.clientX + 12) + 'px';
+                        weekTooltip.style.top = (e.clientY + 12) + 'px';
+                        weekTooltip.classList.add('visible');
+                        return;
+                    }
+                } else {
+                    const weekIndex = Math.floor((mx - projectLabelWidth) / weekW);
+                    if (weekIndex >= 0 && weekIndex < totalWeeks) {
+                        const weekStart = new Date(startDate.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000);
+                        const weekEnd = new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+                        weekTooltip.textContent = `${fmt(weekStart)}${getTranslation('weekTooltipTo')}${fmt(weekEnd)}`;
+                        weekTooltip.style.left = (e.clientX + 12) + 'px';
+                        weekTooltip.style.top = (e.clientY + 12) + 'px';
+                        weekTooltip.classList.add('visible');
+                        return;
+                    }
                 }
             }
             weekTooltip.classList.remove('visible');
@@ -733,6 +836,111 @@ function populateMonthSelectors(forceReset = false) {
     }
 }
 
+// --- SELECTORES DE SEMANA (modo Semana/Día) ---
+
+// Devuelve el lunes (00:00) de la semana que contiene la fecha dada.
+function mondayOf(date) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const day = d.getDay(); // 0 = domingo
+    d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+    return d;
+}
+
+function toISODate(d) {
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function parseISODate(s) {
+    const [y, m, d] = String(s).split('-').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+}
+
+function weekOptionLabel(d) {
+    const monthNames = getTranslation('months') || months;
+    return `${d.getDate()} ${monthNames[d.getMonth()]} '${String(d.getFullYear()).slice(-2)}`;
+}
+
+// Asigna una fecha (lunes) a un selector de semana, creando la opción si no existe.
+function setWeekSelectValue(sel, mondayDate) {
+    if (!sel) return;
+    const iso = toISODate(mondayDate);
+    if (!Array.from(sel.options).some(o => o.value === iso)) {
+        sel.add(new Option(weekOptionLabel(mondayDate), iso));
+    }
+    sel.value = iso;
+}
+
+// Asigna el lunes de inicio y recuerda su valor (para no desplazar tareas al sincronizar).
+function setStartWeekValue(iso) {
+    const sw = document.getElementById('start-week');
+    if (!sw) return;
+    setWeekSelectValue(sw, mondayOf(parseISODate(iso)));
+    lastStartWeekISO = sw.value;
+    // Solo se llama con un valor real (estados guardados en modo día).
+    weekRangeSet = true;
+}
+
+// Rellena los selectores de semana con los lunes de un horizonte amplio
+// (desde enero del año actual, ~60 semanas), etiquetados con su fecha real.
+function populateWeekSelectors() {
+    const startWeekSelect = document.getElementById('start-week');
+    const endWeekSelect = document.getElementById('end-week');
+    if (!startWeekSelect || !endWeekSelect) return;
+    startWeekSelect.innerHTML = '';
+    endWeekSelect.innerHTML = '';
+
+    const firstMonday = mondayOf(new Date(new Date().getFullYear(), 0, 1));
+    const WEEKS = 60;
+    for (let i = 0; i < WEEKS; i++) {
+        const d = new Date(firstMonday.getTime() + i * 7 * 24 * 60 * 60 * 1000);
+        const label = weekOptionLabel(d);
+        const iso = toISODate(d);
+        startWeekSelect.add(new Option(label, iso));
+        endWeekSelect.add(new Option(label, iso));
+    }
+}
+
+// Garantiza que el fin esté dentro de [inicio, inicio + (MAX-1) semanas].
+function clampEndWeek() {
+    const sw = document.getElementById('start-week');
+    const ew = document.getElementById('end-week');
+    if (!sw || !ew || !sw.value || !ew.value) return;
+    const startMonday = mondayOf(parseISODate(sw.value));
+    let endMonday = mondayOf(parseISODate(ew.value));
+    const maxEndMonday = new Date(startMonday.getTime() + (MAX_DAYVIEW_WEEKS - 1) * 7 * 24 * 60 * 60 * 1000);
+    if (endMonday.getTime() < startMonday.getTime()) endMonday = new Date(startMonday);
+    if (endMonday.getTime() > maxEndMonday.getTime()) endMonday = maxEndMonday;
+    setWeekSelectValue(ew, endMonday);
+}
+
+// Ajusta los selectores de semana al rango derivado de los meses, con tope de 12 semanas.
+function syncWeekSelectorsFromMonths() {
+    const sw = document.getElementById('start-week');
+    const ew = document.getElementById('end-week');
+    if (!sw || !ew) return;
+
+    const sMonth = parseInt(document.getElementById('start-month').value) || 0;
+    const eMonthRaw = parseInt(document.getElementById('end-month').value);
+    const eMonth = isNaN(eMonthRaw) ? sMonth : eMonthRaw;
+    const year = new Date().getFullYear();
+    // Primer lunes en/ tras el día 1 (igual que el modo mes), para que al
+    // alternar entre vistas no se desplacen las tareas.
+    const startMonday = new Date(year, sMonth, 1);
+    while (startMonday.getDay() !== 1) startMonday.setDate(startMonday.getDate() + 1);
+    const endYear = eMonth < sMonth ? year + 1 : year;
+    let endMonday = mondayOf(new Date(endYear, eMonth + 1, 0));
+
+    const maxEndMonday = new Date(startMonday.getTime() + (MAX_DAYVIEW_WEEKS - 1) * 7 * 24 * 60 * 60 * 1000);
+    if (endMonday.getTime() < startMonday.getTime()) endMonday = new Date(startMonday);
+    if (endMonday.getTime() > maxEndMonday.getTime()) endMonday = maxEndMonday;
+
+    setWeekSelectValue(sw, startMonday);
+    setWeekSelectValue(ew, endMonday);
+    lastStartWeekISO = sw.value;
+    weekRangeSet = true;
+}
+
 // --- GESTIÓN DE HISTORIAL (UNDO/REDO) ---
 
 function saveToHistory() {
@@ -741,6 +949,9 @@ function saveToHistory() {
         startMonth: document.getElementById('start-month').value,
         endMonth: document.getElementById('end-month').value,
         theme: document.getElementById('theme-selector').value,
+        viewMode: viewMode,
+        weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+        weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
         projects: projects
     });
 
@@ -796,6 +1007,9 @@ function applyState(data) {
         document.getElementById('theme-selector').value = data.theme;
         applyTheme(data.theme);
     }
+    if (data.viewMode !== undefined) setViewMode(data.viewMode);
+    if (data.weekStart) setStartWeekValue(data.weekStart);
+    if (data.weekEnd) setWeekSelectValue(document.getElementById('end-week'), mondayOf(parseISODate(data.weekEnd)));
 
     if (data.projects && Array.isArray(data.projects)) {
         projects.length = 0;
@@ -903,15 +1117,17 @@ function addProject(projectData) {
     // Agrupar tareas por fila (si es necesario en el futuro) o simplemente ponerlas en una
     const tasks = projectData.tasks.map(t => ({ ...t }));
 
-    // Calcular el desfase de semanas
-    const globalStartMonth = parseInt(document.getElementById('start-month').value);
+    // Calcular el desfase de semanas (solo si el proyecto trae un mes de inicio;
+    // en modo día las tareas ya vienen posicionadas en días desde la semana 1).
     const projectStartMonth = projectData.startMonth;
-    const monthDifference = projectStartMonth - globalStartMonth;
-    const weeksOffset = Math.round(monthDifference * 4.33); // Aproximación
-
-    tasks.forEach(t => {
-        t.startWeek += weeksOffset;
-    });
+    if (projectStartMonth !== undefined && !isNaN(projectStartMonth)) {
+        const globalStartMonth = parseInt(document.getElementById('start-month').value);
+        const monthDifference = projectStartMonth - globalStartMonth;
+        const weeksOffset = Math.round(monthDifference * 4.33); // Aproximación
+        tasks.forEach(t => {
+            t.startWeek += weeksOffset;
+        });
+    }
 
     // Por ahora, cada tarea en su propia fila para evitar colisiones visuales iniciales
     newProject.tasksByRow = tasks.map(t => [t]);
@@ -949,6 +1165,9 @@ function generateShareUrl() {
         startMonth: document.getElementById('start-month').value,
         endMonth: document.getElementById('end-month').value,
         theme: document.getElementById('theme-selector').value,
+        viewMode: viewMode,
+        weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+        weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
         lang: document.getElementById('lang-selector').value,
         projects: projects
     };
@@ -980,6 +1199,9 @@ async function generateShortShareUrl() {
         startMonth: document.getElementById('start-month').value,
         endMonth: document.getElementById('end-month').value,
         theme: document.getElementById('theme-selector').value,
+        viewMode: viewMode,
+        weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+        weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
         lang: document.getElementById('lang-selector').value,
         projects: projects
     };
@@ -1029,6 +1251,9 @@ function loadFromShareUrl() {
             document.getElementById('theme-selector').value = data.theme;
             applyTheme(data.theme);
         }
+        if (data.viewMode) setViewMode(data.viewMode);
+        if (data.weekStart) setStartWeekValue(data.weekStart);
+        if (data.weekEnd) setWeekSelectValue(document.getElementById('end-week'), mondayOf(parseISODate(data.weekEnd)));
         if (data.lang) {
             document.getElementById('lang-selector').value = data.lang;
             applyLanguage(data.lang);
@@ -1114,6 +1339,9 @@ function saveStateToLocalStorage() {
             startMonth: document.getElementById('start-month').value,
             endMonth: document.getElementById('end-month').value,
             theme: document.getElementById('theme-selector').value,
+            viewMode: viewMode,
+            weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+            weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
             lang: document.getElementById('lang-selector').value,
             projects: projects
         };
@@ -1139,6 +1367,9 @@ function loadStateFromLocalStorage() {
                 document.getElementById('theme-selector').value = data.theme;
                 applyTheme(data.theme);
             }
+            if (data.viewMode) setViewMode(data.viewMode);
+            if (data.weekStart) setStartWeekValue(data.weekStart);
+            if (data.weekEnd) setWeekSelectValue(document.getElementById('end-week'), mondayOf(parseISODate(data.weekEnd)));
             if (data.lang) {
                 document.getElementById('lang-selector').value = data.lang;
             }
@@ -1160,6 +1391,9 @@ function saveSchedule() {
         startMonth: document.getElementById('start-month').value,
         endMonth: document.getElementById('end-month').value,
         theme: document.getElementById('theme-selector').value,
+        viewMode: viewMode,
+        weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+        weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
         projects: projects
     };
 
@@ -1199,6 +1433,9 @@ function loadSchedule(event) {
             if (data.endMonth !== undefined) {
                 document.getElementById('end-month').value = data.endMonth;
             }
+            if (data.viewMode) setViewMode(data.viewMode);
+            if (data.weekStart) setStartWeekValue(data.weekStart);
+            if (data.weekEnd) setWeekSelectValue(document.getElementById('end-week'), mondayOf(parseISODate(data.weekEnd)));
             if (data.projects && Array.isArray(data.projects)) {
                 // Limpiar el array actual y añadir los proyectos cargados
                 projects.length = 0;
@@ -1383,6 +1620,37 @@ function deleteTask(projectIndex, rowIndex, taskIndex) {
 
 // --- MODAL DE PROYECTO ---
 function addDefaultProject() {
+    // En modo Semana/Día las barras se miden en DÍAS para que el proyecto de
+    // ejemplo quepa entero en el rango visible (p. ej. 2 semanas).
+    if (viewMode === 'day') {
+        const totalDays = calculateTotalWeeks() * 7;
+        let plan = [
+            { name: "Definición", days: 2, isMilestone: false },
+            { name: "Diseño", days: 3, isMilestone: false },
+            { name: "Desarrollo", days: 4, isMilestone: false },
+            { name: "Pruebas", days: 2, isMilestone: false },
+            { name: "Entrega", days: 1, isMilestone: true }
+        ];
+        const span = plan.reduce((s, p) => s + p.days, 0);
+        if (totalDays > 0 && span > totalDays) {
+            const f = totalDays / span;
+            plan = plan.map(p => ({ ...p, days: Math.max(1, Math.round(p.days * f)) }));
+        }
+        let dayCursor = 0;
+        const tasks = plan.map(p => {
+            const startWeek = 1 + dayCursor / 7;
+            const duration = (p.isMilestone ? 1 : p.days) / 7;
+            dayCursor += p.days;
+            return { name: p.name, startWeek, duration, isMilestone: p.isMilestone, textPosition: 'outside' };
+        });
+        addProject({
+            name: `Proyecto ${projects.length + 1}`,
+            color: colorPalette[nextColorIndex % colorPalette.length],
+            tasks
+        });
+        return;
+    }
+
     const projectData = {
         name: `Proyecto ${projects.length + 1}`,
         color: colorPalette[nextColorIndex % colorPalette.length],
@@ -1992,19 +2260,21 @@ function handleCanvasMouseMove(e) {
     if (resizingTask) {
         const dpr = ctx.getTransform().a || 1;
         const weekWidth = (canvas.width / dpr - projectLabelWidth) / totalWeeks;
-        const currentWeek = Math.round((x - projectLabelWidth) / weekWidth);
+        // Ajuste a la rejilla del modo actual (semanas o días).
+        const currentWeek = snapWeeks((x - projectLabelWidth) / weekWidth);
+        const minDur = minDurationWeeks();
 
         if (resizingTask.handle === 'left') {
             // Calcular siempre desde los valores originales para evitar acumulación de errores
             const originalEndGrid = (resizingTask.originalStartWeek - 1) + resizingTask.originalDuration;
             const newDuration = originalEndGrid - currentWeek;
-            if (newDuration >= 0.5) {
+            if (newDuration >= minDur) {
                 ghostTask.startWeek = currentWeek + 1;
                 ghostTask.duration = newDuration;
             }
         } else {
             const newDuration = currentWeek - (resizingTask.originalStartWeek - 1);
-            if (newDuration >= 0.5) {
+            if (newDuration >= minDur) {
                 ghostTask.startWeek = resizingTask.originalStartWeek;
                 ghostTask.duration = newDuration;
             }
@@ -2035,7 +2305,8 @@ function handleCanvasMouseMove(e) {
             const dpr = ctx.getTransform().a || 1;
             const chartWidth = canvas.width / dpr - projectLabelWidth;
             const weekWidth = chartWidth / totalWeeks;
-            let newStartWeek = Math.round((x - projectLabelWidth - draggingTask.offsetX) / weekWidth);
+            // Ajuste a la rejilla del modo actual (semanas o días).
+            let newStartWeek = snapWeeks((x - projectLabelWidth - draggingTask.offsetX) / weekWidth);
             newStartWeek = Math.max(0, Math.min(newStartWeek, totalWeeks - task.duration));
             task.startWeek = newStartWeek + 1;
 
@@ -2134,21 +2405,31 @@ function draw() {
     const dprVal = window.devicePixelRatio || 1;
     ctx.fillRect(0, 0, projectLabelWidth, canvas.height / dprVal);
 
-    // Columna de semana actual (fondo sutil sobre el área de tareas)
+    // Columna actual (semana o día según el modo) con fondo sutil sobre las tareas.
     const _todayForDraw = new Date();
     const _startDateForDraw = getStartDate();
     const _daysDiff = (_todayForDraw - _startDateForDraw) / (1000 * 60 * 60 * 24);
-    const todayWeekIndex = Math.floor(_daysDiff / 7);
-    if (todayWeekIndex >= 0 && todayWeekIndex < totalWeeks) {
-        const _dpr = ctx.getTransform().a || 1;
-        const _logicalW = canvas.width / _dpr;
-        const _logicalH = canvas.height / _dpr;
-        const _chartW = _logicalW - projectLabelWidth -
-            (isDrawingForExport ? exportRightPadding : 0);
-        const _weekW = _chartW / totalWeeks;
-        const _weekX = projectLabelWidth + todayWeekIndex * _weekW;
-        ctx.fillStyle = todayColTint;
-        ctx.fillRect(_weekX, headerHeight, _weekW, _logicalH - headerHeight);
+    const _dpr = ctx.getTransform().a || 1;
+    const _logicalW = canvas.width / _dpr;
+    const _logicalH = canvas.height / _dpr;
+    const _chartW = _logicalW - projectLabelWidth -
+        (isDrawingForExport ? exportRightPadding : 0);
+    const _weekW = _chartW / totalWeeks;
+    if (viewMode === 'day') {
+        const todayDayIndex = Math.floor(_daysDiff);
+        if (todayDayIndex >= 0 && todayDayIndex < totalWeeks * 7) {
+            const _dayW = _weekW / 7;
+            const _dayX = projectLabelWidth + todayDayIndex * _dayW;
+            ctx.fillStyle = todayColTint;
+            ctx.fillRect(_dayX, headerHeight, _dayW, _logicalH - headerHeight);
+        }
+    } else {
+        const todayWeekIndex = Math.floor(_daysDiff / 7);
+        if (todayWeekIndex >= 0 && todayWeekIndex < totalWeeks) {
+            const _weekX = projectLabelWidth + todayWeekIndex * _weekW;
+            ctx.fillStyle = todayColTint;
+            ctx.fillRect(_weekX, headerHeight, _weekW, _logicalH - headerHeight);
+        }
     }
 
     drawGrid();
@@ -2169,6 +2450,9 @@ function draw() {
             startMonth: document.getElementById('start-month').value,
             endMonth: document.getElementById('end-month').value,
             theme: document.getElementById('theme-selector').value,
+            viewMode: viewMode,
+            weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+            weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
             lang: document.getElementById('lang-selector').value,
             projects: projects
         };
@@ -2203,6 +2487,13 @@ function drawGrid() {
         (isDrawingForExport ? exportRightPadding : 0);
     const weekWidth = chartWidth / totalWeeks;
     const startDate = getStartDate();
+
+    // Modo Semana/Día: cabecera con semanas arriba y días abajo.
+    // Week/Day mode: header with weeks on top and days below.
+    if (viewMode === 'day') {
+        drawGridDays(chartWidth, weekWidth, startDate);
+        return;
+    }
 
     let lastMonth = -1;
     let monthStartX = projectLabelWidth;
@@ -2275,6 +2566,126 @@ function drawGrid() {
     }
 
     ctx.strokeStyle = gridColor;
+    ctx.beginPath();
+    ctx.moveTo(0, headerHeight);
+    ctx.lineTo(canvas.width, headerHeight);
+    ctx.stroke();
+}
+
+// ES: Cuadrícula del modo Semana/Día. Cada semana se subdivide en 7 días.
+//     La cabecera muestra las semanas arriba (S1, S2…) y los días abajo (número
+//     y, si hay espacio, la inicial del día). El ancho de columna es 1/7 del de
+//     una semana, por lo que la geometría de las barras no cambia respecto al
+//     modo Mes/Semana.
+// EN: Week/Day grid. Each week is split into 7 days. The header shows weeks on
+//     top (W1, W2…) and days below (day number, plus the weekday initial when it
+//     fits). Column width is 1/7 of a week, so task-bar geometry is identical to
+//     Month/Week mode.
+function drawGridDays(chartWidth, weekWidth, startDate) {
+    const dpr = ctx.getTransform().a || 1;
+    const bottomY = canvas.height / dpr;
+    const dayWidth = weekWidth / 7;
+    const totalDays = totalWeeks * 7;
+    const midY = headerHeight / 2;
+
+    const weekdayInitials = getTranslation('weekdayInitials') || [];
+
+    // Índice del día de hoy respecto al lunes inicial.
+    const todayGrid = new Date();
+    const todayDayIndex = Math.floor((todayGrid - startDate) / (1000 * 60 * 60 * 24));
+
+    const showDayNumber = dayWidth >= 13;
+    const showWeekdayInitial = dayWidth >= 26;
+
+    // 1) Bandas alternas por semana en la cabecera (ayuda a agrupar visualmente).
+    for (let w = 0; w < totalWeeks; w++) {
+        if (w % 2 === 1) {
+            const wx = projectLabelWidth + w * weekWidth;
+            ctx.fillStyle = canvasMonthOverlay;
+            ctx.fillRect(wx, 0, weekWidth, headerHeight);
+        }
+    }
+
+    // 2) Líneas de día (tenues) en la fila de días y el cuerpo.
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.3;
+    for (let d = 1; d < totalDays; d++) {
+        if (d % 7 === 0) continue; // las fronteras de semana se dibujan más marcadas después
+        const dx = projectLabelWidth + d * dayWidth;
+        ctx.beginPath();
+        ctx.moveTo(dx, midY);
+        ctx.lineTo(dx, bottomY);
+        ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // 3) Resaltado de hoy en la cabecera (celda del día actual).
+    if (todayDayIndex >= 0 && todayDayIndex < totalDays) {
+        const tx = projectLabelWidth + todayDayIndex * dayWidth;
+        ctx.fillStyle = todayBadgeBg;
+        ctx.fillRect(tx, midY, dayWidth, midY);
+    }
+
+    // 4) Etiquetas y números de día.
+    for (let d = 0; d < totalDays; d++) {
+        const dx = projectLabelWidth + d * dayWidth;
+        const dayDate = new Date(startDate.getTime() + d * 24 * 60 * 60 * 1000);
+        const isToday = d === todayDayIndex;
+        const cx = dx + dayWidth / 2;
+        const wdIdx = (dayDate.getDay() + 6) % 7; // 0 = lunes
+
+        if (showWeekdayInitial) {
+            ctx.fillStyle = isToday ? todayWeekNumColor : canvasMutedText;
+            ctx.font = '9px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText(weekdayInitials[wdIdx] || '', cx, midY + 6);
+        }
+        if (showDayNumber) {
+            ctx.fillStyle = isToday ? todayWeekNumColor : canvasMutedText;
+            ctx.font = (isToday ? 'bold ' : '') + (dayWidth >= 22 ? gridFont : '10px Poppins');
+            ctx.textAlign = 'center';
+            const numY = showWeekdayInitial ? midY + 20 : midY + 15;
+            ctx.fillText(String(dayDate.getDate()), cx, numY);
+        }
+    }
+
+    // 5) Fronteras de semana (marcadas) en cabecera y cuerpo + etiqueta de semana.
+    for (let w = 0; w <= totalWeeks; w++) {
+        const x = projectLabelWidth + w * weekWidth;
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, bottomY);
+        ctx.stroke();
+
+        if (w < totalWeeks) {
+            // Etiqueta de semana = fecha real del lunes (no "S1, S2…"), para
+            // que se entienda dónde se está. Se añade el año en la 1ª semana o
+            // al cambiar de año (p. ej. dic → ene).
+            const monthNames = getTranslation('months') || months;
+            const monday = new Date(startDate.getTime() + w * 7 * 24 * 60 * 60 * 1000);
+            let label = `${monday.getDate()} ${monthNames[monday.getMonth()]}`;
+            if (w === 0 || monday.getMonth() === 0) {
+                label += ` '${String(monday.getFullYear()).slice(-2)}`;
+            }
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 13px Poppins';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, x + weekWidth / 2, midY - 10);
+        }
+    }
+
+    // 6) Separadores horizontales: entre fila de semanas/días y bajo la cabecera.
+    ctx.strokeStyle = gridColor;
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(projectLabelWidth, midY);
+    ctx.lineTo(canvas.width, midY);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
     ctx.beginPath();
     ctx.moveTo(0, headerHeight);
     ctx.lineTo(canvas.width, headerHeight);
@@ -2847,6 +3258,10 @@ function animate(currentTime) {
 }
 
 function getStartDate() {
+    if (viewMode === 'day') {
+        const sw = document.getElementById('start-week');
+        if (sw && sw.value) return mondayOf(parseISODate(sw.value));
+    }
     const selectedMonth = parseInt(document.getElementById('start-month').value);
     const date = new Date(new Date().getFullYear(), selectedMonth, 1);
     while (date.getDay() !== 1) date.setDate(date.getDate() + 1);
@@ -2854,6 +3269,19 @@ function getStartDate() {
 }
 
 function getEndDate() {
+    if (viewMode === 'day') {
+        const sw = document.getElementById('start-week');
+        const ew = document.getElementById('end-week');
+        if (sw && sw.value && ew && ew.value) {
+            const startMonday = mondayOf(parseISODate(sw.value));
+            let endMonday = mondayOf(parseISODate(ew.value));
+            const maxEndMonday = new Date(startMonday.getTime() + (MAX_DAYVIEW_WEEKS - 1) * 7 * 24 * 60 * 60 * 1000);
+            if (endMonday.getTime() < startMonday.getTime()) endMonday = new Date(startMonday);
+            if (endMonday.getTime() > maxEndMonday.getTime()) endMonday = maxEndMonday;
+            // Domingo de la semana final para incluirla completa.
+            return new Date(endMonday.getTime() + 6 * 24 * 60 * 60 * 1000);
+        }
+    }
     const selectedMonth = parseInt(document.getElementById('end-month').value);
     const startDate = getStartDate();
     let year = startDate.getFullYear();
@@ -2866,6 +3294,8 @@ function calculateTotalWeeks() {
     const endDate = getEndDate();
     const diffTime = endDate.getTime() - startDate.getTime();
     const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+    // En modo día permitimos rangos cortos (mínimo 1 semana) y topamos a 12.
+    if (viewMode === 'day') return Math.min(MAX_DAYVIEW_WEEKS, Math.max(1, diffWeeks));
     return Math.max(4, diffWeeks);
 }
 
@@ -2942,7 +3372,9 @@ async function getImageDataUrl() {
 
         const selectorWeeks = calculateTotalWeeks();
         const exportTotalWeeks = selectorWeeks;
-        const EXPORT_WEEK_WIDTH = 50;
+        // En modo día ampliamos la columna de semana (7 días) para que los días
+        // y las etiquetas de fecha de la cabecera no se solapen.
+        const EXPORT_WEEK_WIDTH = viewMode === 'day' ? 7 * 28 : 50;
         const chartLogicalWidth = exportTotalWeeks * EXPORT_WEEK_WIDTH;
 
         // Calcular margen extra a la derecha para que las etiquetas de hitos
@@ -3094,8 +3526,8 @@ window.CronogramaAPI = {
                         if (!Array.isArray(row)) { errors.push(`projects[${pi}].tasksByRow[${ri}] must be an array`); return; }
                         row.forEach((t, ti) => {
                             if (typeof t.name !== 'string') errors.push(`projects[${pi}].tasksByRow[${ri}][${ti}].name must be a string`);
-                            if (!Number.isInteger(t.startWeek) || t.startWeek < 1) errors.push(`projects[${pi}].tasksByRow[${ri}][${ti}].startWeek must be integer >= 1`);
-                            if (!Number.isInteger(t.duration) || t.duration < 1) errors.push(`projects[${pi}].tasksByRow[${ri}][${ti}].duration must be integer >= 1`);
+                            if (typeof t.startWeek !== 'number' || !isFinite(t.startWeek) || t.startWeek < 1) errors.push(`projects[${pi}].tasksByRow[${ri}][${ti}].startWeek must be a number >= 1`);
+                            if (typeof t.duration !== 'number' || !isFinite(t.duration) || t.duration <= 0) errors.push(`projects[${pi}].tasksByRow[${ri}][${ti}].duration must be a number > 0`);
                         });
                     });
                 }
@@ -3211,7 +3643,9 @@ async function copyChartToClipboard() {
         const selectorWeeks = calculateTotalWeeks();
         const exportTotalWeeks = selectorWeeks;
 
-        const EXPORT_WEEK_WIDTH = 50;
+        // En modo día ampliamos la columna de semana (7 días) para que los días
+        // y las etiquetas de fecha de la cabecera no se solapen.
+        const EXPORT_WEEK_WIDTH = viewMode === 'day' ? 7 * 28 : 50;
         const chartLogicalWidth = exportTotalWeeks * EXPORT_WEEK_WIDTH;
 
         // Margen extra a la derecha para que las etiquetas de hitos no se corten.
@@ -3298,8 +3732,19 @@ function createNewSchedule() {
         // Resetear título
         document.getElementById('cronograma-title').value = "Mi Cronograma";
 
-        // Resetear fechas
+        // Resetear fechas. Se mantiene el modo de vista actual (no se fuerza).
         populateMonthSelectors(true); // `true` para forzar el reseteo a los valores por defecto
+
+        if (viewMode === 'day') {
+            // En modo Semana/Día, por defecto: semana actual y la siguiente.
+            const todayMonday = mondayOf(new Date());
+            const nextMonday = new Date(todayMonday.getTime() + 7 * 24 * 60 * 60 * 1000);
+            setStartWeekValue(toISODate(todayMonday));
+            setWeekSelectValue(document.getElementById('end-week'), nextMonday);
+        } else {
+            // En modo Mes/Semana, dejar el rango de semanas coherente por si se cambia luego.
+            syncWeekSelectorsFromMonths();
+        }
 
         // Actualizar la vista
         updatePreview();
@@ -3319,7 +3764,107 @@ function moveProject(projectIndex, direction) {
     saveToHistory();
 }
 
+// Exportación a Excel en modo Semana/Día: columnas por día, cabecera de semanas
+// (fecha del lunes, fusionada sobre sus 7 días) y fila de días (inicial + número).
+function exportToExcelDays() {
+    const wb = XLSX.utils.book_new();
+    const ws_data = [];
+
+    const weeks = calculateTotalWeeks();
+    const totalDays = weeks * 7;
+    if (totalDays <= 0) {
+        alert(getTranslation("No hay datos en el cronograma para exportar."));
+        return;
+    }
+    const startDate = getStartDate();
+    const monthNames = getTranslation('months') || months;
+    const weekdayInitials = getTranslation('weekdayInitials') || [];
+
+    // Fila 0: semanas (fusionadas). Fila 1: días.
+    const weekHeaderRow = ['Proyecto', 'Tarea'];
+    const dayHeaderRow = ['', ''];
+    for (let d = 0; d < totalDays; d++) {
+        const dayDate = new Date(startDate.getTime() + d * 24 * 60 * 60 * 1000);
+        const wdIdx = (dayDate.getDay() + 6) % 7;
+        weekHeaderRow.push('');
+        dayHeaderRow.push(`${weekdayInitials[wdIdx] || ''}${dayDate.getDate()}`);
+    }
+    ws_data.push(weekHeaderRow);
+    ws_data.push(dayHeaderRow);
+
+    // Merges de la fila de semanas (cada semana ocupa 7 columnas de día).
+    const merges = [];
+    for (let w = 0; w < weeks; w++) {
+        const monday = new Date(startDate.getTime() + w * 7 * 24 * 60 * 60 * 1000);
+        const label = `${monday.getDate()} ${monthNames[monday.getMonth()]} '${String(monday.getFullYear()).slice(-2)}`;
+        const startCol = 2 + w * 7;
+        ws_data[0][startCol] = label;
+        merges.push({ s: { r: 0, c: startCol }, e: { r: 0, c: startCol + 6 } });
+    }
+
+    // Filas de tareas + estilos.
+    const styleMap = [];
+    let excelRowIndex = 2;
+    projects.forEach((p, index) => {
+        if (index > 0) { ws_data.push(Array(totalDays + 2).fill('')); excelRowIndex++; }
+        p.tasksByRow.flat().forEach(task => {
+            const taskRow = Array(totalDays + 2).fill('');
+            taskRow[0] = p.name;
+            taskRow[1] = task.name;
+            ws_data.push(taskRow);
+            styleMap.push({
+                rowIndex: excelRowIndex,
+                startDay0: Math.max(0, Math.round((task.startWeek - 1) * 7)),
+                durationDays: Math.max(1, Math.round(task.duration * 7)),
+                color: p.color
+            });
+            excelRowIndex++;
+        });
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    ws['!merges'] = merges;
+
+    // Negrita en cabeceras (filas 0 y 1).
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let c = 0; c <= range.e.c; c++) {
+        for (let r = 0; r <= 1; r++) {
+            const a = XLSX.utils.encode_cell({ r, c });
+            if (!ws[a]) continue;
+            if (!ws[a].s) ws[a].s = {};
+            if (!ws[a].s.font) ws[a].s.font = {};
+            ws[a].s.font.bold = true;
+        }
+    }
+
+    // Colorear los días que ocupa cada tarea.
+    styleMap.forEach(item => {
+        const startCol = item.startDay0 + 2;
+        for (let k = 0; k < item.durationDays; k++) {
+            const colIndex = startCol + k;
+            if (colIndex < totalDays + 2) {
+                const a = XLSX.utils.encode_cell({ r: item.rowIndex, c: colIndex });
+                if (!ws[a]) ws[a] = { v: '', t: 's' };
+                else ws[a].v = '';
+                ws[a].s = { fill: { fgColor: { rgb: item.color.replace('#', '') } } };
+            }
+        }
+    });
+
+    // Anchos de columna.
+    ws['!cols'] = [{ wch: 30 }, { wch: 40 }];
+    for (let d = 0; d < totalDays; d++) ws['!cols'].push({ wch: 4 });
+
+    XLSX.utils.book_append_sheet(wb, ws, "Cronograma");
+    const cronogramaTitle = document.getElementById('cronograma-title').value || 'cronograma';
+    const filename = `${cronogramaTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.xlsx`;
+    XLSX.writeFile(wb, filename);
+}
+
 function exportToExcel() {
+    // En modo Semana/Día exportamos columnas por día con cabecera de semanas.
+    if (viewMode === 'day') { exportToExcelDays(); return; }
+
     const wb = XLSX.utils.book_new();
     const ws_data = [];
 
@@ -3416,10 +3961,13 @@ function exportToExcel() {
 
     // 4. APLICAR COLORES A LAS BARRAS DE TAREAS
     styleMap.forEach(item => {
-        // La primera semana (startWeek) corresponde a la columna de la semana + 1 (por la columna Tarea)
-        const startCol = item.startWeek + 1;
+        // El Excel es semanal: redondeamos posición y duración a semanas enteras
+        // (en modo Semana/Día las tareas pueden tener fracciones de semana).
+        const startWeekIdx0 = Math.max(0, Math.round(item.startWeek - 1)); // 0-indexed
+        const durationWeeks = Math.max(1, Math.round(item.duration));
+        const startCol = startWeekIdx0 + 2; // +2 por las columnas Proyecto y Tarea
 
-        for (let w = 0; w < item.duration; w++) {
+        for (let w = 0; w < durationWeeks; w++) {
             const colIndex = startCol + w;
             if (colIndex < totalWeeks + 2) {
                 const cellAddress = XLSX.utils.encode_cell({ r: item.rowIndex, c: colIndex });
@@ -3669,6 +4217,9 @@ function exportToExcel() {
             title: document.getElementById('cronograma-title').value,
             startMonth: document.getElementById('start-month').value,
             endMonth: document.getElementById('end-month').value,
+            viewMode: typeof viewMode !== 'undefined' ? viewMode : 'week',
+            weekStart: viewMode === 'day' ? document.getElementById('start-week').value : '',
+            weekEnd: viewMode === 'day' ? document.getElementById('end-week').value : '',
             projects: JSON.parse(JSON.stringify(typeof projects !== 'undefined' ? projects : []))
         };
     }
@@ -3991,20 +4542,15 @@ function exportToExcel() {
             delete stateObj.theme;
             delete stateObj.lang;
 
-            // Marcamos como "ya guardado" para que no dispare un autosave redundante
             currentCloudId = data.id;
-            const titleForSave = data.title || stateObj.title || 'Mi Cronograma';
-            const stateForSave = {
-                title: titleForSave,
-                startMonth: String(stateObj.startMonth ?? ''),
-                endMonth: String(stateObj.endMonth ?? ''),
-                projects: stateObj.projects || []
-            };
-            lastSavedHash = JSON.stringify({ title: titleForSave, state: stateForSave });
             persistCloudState();
 
             applyState(stateObj);
             resetHistory();
+            // Marcamos como "ya guardado" usando el estado realmente aplicado, para
+            // que no dispare un autosave redundante (espeja el hash de doAutoSave).
+            const appliedState = getCurrentState();
+            lastSavedHash = JSON.stringify({ title: appliedState.title || 'Mi Cronograma', state: appliedState });
             renderLists();
         } catch (err) {
             console.error('[cloud] load error:', err);

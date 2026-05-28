@@ -209,15 +209,28 @@
             </div>
             <div class="controls">
                 <div class="select-group">
+                    <label for="view-mode" data-i18n="viewLabel">Vista:</label>
+                    <select id="view-mode">
+                        <option value="week" data-i18n="viewMonthWeek">Mes / Semana</option>
+                        <option value="day" data-i18n="viewWeekDay">Semana / Día</option>
+                    </select>
+                </div>
+                <div class="select-group">
                     <label for="start-month" data-i18n="startLabel">Inicio:</label>
                     <select id="start-month">
                         <!-- Opciones se generarán dinámicamente -->
+                    </select>
+                    <select id="start-week" style="display:none;">
+                        <!-- Opciones se generarán dinámicamente (modo Semana/Día) -->
                     </select>
                 </div>
                 <div class="select-group">
                     <label for="end-month" data-i18n="endLabel">Fin:</label>
                     <select id="end-month">
                         <!-- Opciones se generarán dinámicamente -->
+                    </select>
+                    <select id="end-week" style="display:none;">
+                        <!-- Opciones se generarán dinámicamente (modo Semana/Día) -->
                     </select>
                 </div>
                 <div class="select-group">
@@ -413,7 +426,7 @@
                title="AI Agent API documentation">🤖 AI API</a>
         </span>
         <span style="flex: 1; text-align: center;">Powered by juangenovardortiz@gmail.com</span>
-        <span style="flex: 1; text-align: right;">v.4.11</span>
+        <span style="flex: 1; text-align: right;">v.4.15</span>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>

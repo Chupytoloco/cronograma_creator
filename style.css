@@ -131,6 +131,9 @@ body {
 #cronograma-title,
 #start-month,
 #end-month,
+#start-week,
+#end-week,
+#view-mode,
 #theme-selector,
 #lang-selector {
     background-color: var(--input-bg);
@@ -1052,6 +1055,8 @@ canvas {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .select-group {
@@ -1059,6 +1064,7 @@ canvas {
     flex-direction: column;
     align-items: flex-start;
     gap: 3px;
+    flex-shrink: 0;
 }
 
 .select-group label {
